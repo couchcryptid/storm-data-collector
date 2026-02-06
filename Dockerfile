@@ -7,7 +7,7 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package*.json ./
-RUN HUSKY=0 npm ci
+RUN export HUSKY=0 && npm ci
 
 # Development image
 FROM base AS development
@@ -32,7 +32,7 @@ FROM base AS prod-deps
 WORKDIR /app
 
 COPY package*.json ./
-RUN HUSKY=0 npm ci --omit=dev
+RUN export HUSKY=0 && npm ci --omit=dev
 
 # Production image
 FROM base AS runner
