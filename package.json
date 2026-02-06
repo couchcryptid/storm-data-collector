@@ -2,6 +2,7 @@
   "name": "ht-weather-data-collector",
   "version": "1.0.0",
   "description": "",
+  "private": true,
   "homepage": "https://github.com/couchcryptid/ht-weather-data-collector#readme",
   "bugs": {
     "url": "https://github.com/couchcryptid/ht-weather-data-collector/issues"
@@ -46,6 +47,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
+    "semantic-release": "^25.0.3",
     "testcontainers": "^11.11.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
