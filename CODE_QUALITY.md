@@ -7,22 +7,27 @@ This document describes the code quality tools configured for this project.
 **Package:** `zod@4.3.6`
 
 ### What it does
+
 Validates environment variables and configuration at startup, catching configuration errors before they cause runtime issues.
 
 ### Configuration
+
 See [src/config.ts](src/config.ts) for the validation schema.
 
 ### Validation Rules
+
 - `KAFKA_BROKERS` - String (default: "localhost:9092")
-- `KAFKA_CLIENT_ID` - String (default: "csv-producer")
-- `KAFKA_TOPIC` - String (default: "csv-topic")
+- `KAFKA_CLIENT_ID` - String (default: "ht-weather-collector")
+- `KAFKA_TOPIC` - String (default: "raw-weather-reports")
 - `CSV_BASE_URL` - Valid URL (default: "https://example.com/")
 - `BATCH_SIZE` - Positive number (default: 500)
 - `MAX_CONCURRENT_CSV` - Positive number, max 10 (default: 3)
-- `RETRY_HOURS` - Positive number, max 48 (default: 6)
-- `CSV_TYPES` - Comma-separated string (default: "sales,inventory,customers")
+- `CRON_SECHEDULE` - String (default "0 0 \* \* \*")
+- `CRON_RETRY_INTERVAL` - Positive number, max 48 (default: 6)
+- `CSV_TYPES` - Comma-separated string (default: "torn,hail,wind")
 
 ### Example Error
+
 ```bash
 $ CSV_BASE_URL="not-a-url" npm run dev
 
@@ -41,23 +46,27 @@ ZodError: [
 ## 2. Vitest Testing & Coverage
 
 **Packages:**
+
 - `@vitest/coverage-v8@4.0.18`
 - `@vitest/ui@4.0.18`
 - `testcontainers@11.11.0`
 - `@testcontainers/kafka@11.11.0`
 
 ### What it does
+
 Provides comprehensive testing infrastructure including unit tests, integration tests, and test coverage reports.
 
 ### Test Types
 
 **Unit Tests** - Fast, isolated tests with mocked dependencies
+
 - Located in: `src/**/*.test.ts` (excluding `*.integration.test.ts`)
 - Run with: `npm run test:unit`
 - Used in pre-commit hooks
 - Takes 1-2 seconds
 
 **Integration Tests** - Full end-to-end tests with real Kafka
+
 - Located in: `src/**/*.integration.test.ts`
 - Run with: `npm run test:integration`
 - Uses Testcontainers to spin up real Kafka instance
@@ -67,36 +76,43 @@ Provides comprehensive testing infrastructure including unit tests, integration 
 ### Usage
 
 **Run all tests:**
+
 ```bash
 npm test
 ```
 
 **Run only unit tests (fast):**
+
 ```bash
 npm run test:unit
 ```
 
 **Run only integration tests (slow, requires Docker):**
+
 ```bash
 npm run test:integration
 ```
 
 **Generate coverage report (unit tests only):**
+
 ```bash
 npm run test:coverage:unit
 ```
 
 **Generate coverage report (all tests):**
+
 ```bash
 npm run test:coverage
 ```
 
 **Watch mode (re-run on file changes):**
+
 ```bash
 npm run test:watch
 ```
 
 **Visual test UI:**
+
 ```bash
 npm run test:ui
 ```
@@ -104,6 +120,7 @@ npm run test:ui
 Opens an interactive browser UI for running and inspecting tests.
 
 ### Coverage Output Example
+
 ```
 File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 ---------------|---------|----------|---------|---------|-------------------
@@ -119,6 +136,7 @@ All files      |   82.55 |    75.86 |   76.47 |   84.14 |
 ```
 
 ### Coverage Goals
+
 - **Current:** 82.55% statement coverage (unit tests)
 - **Target:** 85%+ statement coverage
 - **Uncovered areas:**
@@ -135,16 +153,19 @@ The integration tests verify the full CSV-to-Kafka pipeline:
 4. **Verification** - Consumes messages from Kafka to verify correct publishing
 
 **Test coverage:**
+
 - ✅ Publishing CSV data and consuming from Kafka
 - ✅ Batch publishing with configurable batch sizes
 - ✅ Message metadata (type, timestamps)
 
 **Requirements:**
+
 - Docker must be running
 - Takes 60-90 seconds to start containers
 - Each test creates fresh Kafka consumer for isolation
 
 **Example test:**
+
 ```typescript
 it('publishes CSV data to Kafka and can be consumed', async () => {
   // Arrange: Set up test CSV data
@@ -172,10 +193,12 @@ it('publishes CSV data to Kafka and can be consumed', async () => {
 ## 3. Husky + Lint-Staged - Git Hooks
 
 **Packages:**
+
 - `husky@9.1.7`
 - `lint-staged@16.2.7`
 
 ### What it does
+
 Automatically runs code quality checks before each commit, preventing bad code from being committed.
 
 ### Pre-commit Hook
@@ -183,6 +206,7 @@ Automatically runs code quality checks before each commit, preventing bad code f
 **Location:** `.husky/pre-commit`
 
 **Actions:**
+
 1. Runs `prettier --write` on staged TypeScript files (auto-format)
 2. Runs `eslint --fix` on staged TypeScript files (auto-fix linting issues)
 3. Runs unit test suite (`npm run test:unit`)
@@ -190,13 +214,11 @@ Automatically runs code quality checks before each commit, preventing bad code f
    - Run integration tests manually before PRs with `npm run test:integration`
 
 ### Configured in package.json
+
 ```json
 {
   "lint-staged": {
-    "*.ts": [
-      "prettier --write",
-      "eslint --fix"
-    ]
+    "*.ts": ["prettier --write", "eslint --fix"]
   }
 }
 ```
@@ -214,11 +236,13 @@ Automatically runs code quality checks before each commit, preventing bad code f
 6. If any check fails → commit is blocked
 
 ### Bypassing (not recommended)
+
 ```bash
 git commit --no-verify
 ```
 
 ### Example Output
+
 ```bash
 $ git commit -m "Add new feature"
 
@@ -250,11 +274,13 @@ Test Files  3 passed (3)
 ## Best Practices
 
 ### 1. Always Use Valid Environment Variables
+
 - Check `.env.example` for required format
 - Use `npm run dev` to catch config errors early
 - Validation errors show exact field and issue
 
 ### 2. Monitor Test Coverage
+
 - Run `npm run test:coverage` before PRs
 - Aim to maintain or improve coverage percentage
 - Add tests for any new features
@@ -262,11 +288,13 @@ Test Files  3 passed (3)
 - Ensure Docker is running for integration tests
 
 ### 3. Trust the Git Hooks
+
 - Let them auto-format and auto-fix code
 - Don't bypass unless absolutely necessary
 - Fix failing tests before committing
 
 ### 4. Use Test UI for Debugging
+
 - Run `npm run test:ui` for visual debugging
 - See which tests fail and why
 - Inspect coverage interactively
@@ -276,20 +304,24 @@ Test Files  3 passed (3)
 ## Troubleshooting
 
 ### "ZodError: Invalid URL"
+
 - Check `CSV_BASE_URL` in `.env` file
 - Must be a valid URL format (e.g., `https://example.com/`)
 
 ### "husky - pre-commit script failed"
+
 - Tests are failing - run `npm test` to see why
 - Linting errors - run `npm run lint:fix`
 - Formatting issues - run `npm run format`
 
 ### Coverage percentage dropped
+
 - New code added without tests
 - Run `npm run test:coverage` to see uncovered lines
 - Add tests for new functionality
 
 ### Integration tests failing
+
 - Ensure Docker is running
 - Check Docker has enough resources (2GB+ memory recommended)
 - Container startup can take 60-90 seconds
@@ -299,14 +331,14 @@ Test Files  3 passed (3)
 
 ## Summary
 
-| Tool | Purpose | Command |
-|------|---------|---------|
-| **Zod** | Config validation | Automatic on startup |
-| **Unit Tests** | Fast isolated tests | `npm run test:unit` |
-| **Integration Tests** | Full Kafka e2e tests | `npm run test:integration` (requires Docker) |
-| **Coverage** | Test coverage report | `npm run test:coverage` |
-| **Test UI** | Visual test interface | `npm run test:ui` |
-| **Husky** | Git hooks | Automatic on commit |
-| **Lint-Staged** | Stage-only formatting | Automatic with Husky |
+| Tool                  | Purpose               | Command                                      |
+| --------------------- | --------------------- | -------------------------------------------- |
+| **Zod**               | Config validation     | Automatic on startup                         |
+| **Unit Tests**        | Fast isolated tests   | `npm run test:unit`                          |
+| **Integration Tests** | Full Kafka e2e tests  | `npm run test:integration` (requires Docker) |
+| **Coverage**          | Test coverage report  | `npm run test:coverage`                      |
+| **Test UI**           | Visual test interface | `npm run test:ui`                            |
+| **Husky**             | Git hooks             | Automatic on commit                          |
+| **Lint-Staged**       | Stage-only formatting | Automatic with Husky                         |
 
 All tools are configured and ready to use! 🎉
