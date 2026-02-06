@@ -35,7 +35,7 @@ let storedCronCallback: (() => void) | null = null;
 vi.mock('croner', () => {
   return {
     Cron: class MockCron {
-      constructor(pattern: string, callback: () => void) {
+      constructor(_pattern: string, callback: () => void) {
         // Store the callback so we can invoke it manually in tests
         storedCronCallback = callback;
       }
@@ -47,7 +47,6 @@ vi.mock('croner', () => {
 import { startScheduler } from './scheduler.js';
 import { csvStreamToKafka } from '../csv/csvStream.js';
 import { checkCsvAvailability, scheduleRetry } from './retry.js';
-import { buildCsvUrl } from '../csv/utils.js';
 
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;

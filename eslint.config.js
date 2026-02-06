@@ -1,11 +1,25 @@
 // @ts-check
 
 import eslint from '@eslint/js';
-import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
-import eslintPrettierRecommended from 'eslint-plugin-prettier/recommended'
+import eslintPrettierRecommended from 'eslint-plugin-prettier/recommended';
 
-export default defineConfig(
+export default tseslint.config(
   eslint.configs.recommended,
-  eslintPrettierRecommended
+  ...tseslint.configs.recommended,
+  eslintPrettierRecommended,
+  {
+    languageOptions: {
+      parserOptions: {
+        project: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['**/*.test.ts', '**/*.integration.test.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  }
 );

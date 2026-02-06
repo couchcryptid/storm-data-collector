@@ -22,7 +22,7 @@ export async function csvStreamToKafka({
   if (!res.body) throw new Error(`No response body for CSV: ${csvUrl}`);
 
   const readable = Readable.fromWeb(res.body as ReadableStream<Uint8Array>);
-  const rows: any[] = [];
+  const rows: Record<string, string>[] = [];
 
   await new Promise<void>((resolve, reject) => {
     readable

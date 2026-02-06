@@ -54,7 +54,7 @@ describe('csvStreamToKafka', () => {
     expect(mockDisconnect).toHaveBeenCalled();
     expect(mockSend).toHaveBeenCalledTimes(1);
 
-    const messages = mockSend.mock.calls[0][0].messages;
+    const messages = mockSend.mock.calls[0]?.[0]?.messages;
     expect(messages.length).toBe(2);
 
     const parsed = messages.map((m: any) => JSON.parse(m.value));

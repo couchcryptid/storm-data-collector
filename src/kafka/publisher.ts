@@ -3,7 +3,7 @@ import { Producer } from 'kafkajs';
 export async function publishBatch(
   producer: Producer,
   topic: string,
-  batch: any[]
+  batch: Record<string, string>[]
 ) {
   if (batch.length === 0) return;
   await producer.send({
