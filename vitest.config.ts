@@ -15,6 +15,6 @@ export default defineConfig({
         '**/types/**',
       ],
     },
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.integration.test.ts'],
   },
 });

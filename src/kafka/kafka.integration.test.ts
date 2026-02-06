@@ -1,17 +1,15 @@
 // src/kafka/kafka.integration.test.ts
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { KafkaContainer, StartedKafkaContainer } from '@testcontainers/kafka';
-import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { Kafka, EachMessagePayload } from 'kafkajs';
 import { csvStreamToKafka } from '../csv/csvStream.js';
 import { createServer, Server } from 'http';
 
 describe('Kafka Integration Tests', () => {
   let kafkaContainer: StartedKafkaContainer;
   let kafka: Kafka;
-  let consumer: Consumer;
   let httpServer: Server;
   let httpServerUrl: string;
-  const testTopic = 'test-csv-topic';
   const testGroupId = 'test-consumer-group';
 
   // Store CSV data to serve
@@ -19,7 +17,7 @@ describe('Kafka Integration Tests', () => {
 
   beforeAll(async () => {
     // Start HTTP server to serve CSV data
-    httpServer = createServer((req, res) => {
+    httpServer = createServer((_req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/csv' });
       res.end(testCsvContent);
     });
@@ -37,11 +35,15 @@ describe('Kafka Integration Tests', () => {
       });
     });
 
-    // Start Kafka container
+    // Start Kafka container with KRaft mode (no ZooKeeper)
     console.log('[Integration Test] Starting Kafka container...');
-    kafkaContainer = await new KafkaContainer().withExposedPorts(9093).start();
+    kafkaContainer = await new KafkaContainer('confluentinc/cp-kafka:7.5.0')
+      .withKraft()
+      .start();
 
-    const brokers = kafkaContainer.getConnectionString();
+    const host = kafkaContainer.getHost();
+    const port = kafkaContainer.getMappedPort(9093);
+    const brokers = `${host}:${port}`;
     console.log(`[Integration Test] Kafka started at ${brokers}`);
 
     // Create Kafka client
@@ -50,24 +52,34 @@ describe('Kafka Integration Tests', () => {
       brokers: [brokers],
     });
 
+    // Topics will be created automatically by each test with replication factor 1
+
     console.log('[Integration Test] Setup complete');
   }, 90000); // 90 second timeout for container startup
 
-  beforeEach(async () => {
-    // Create fresh consumer for each test
-    consumer = kafka.consumer({
-      groupId: `${testGroupId}-${Date.now()}`, // Unique group ID per test
+  // Helper function to create topics with proper replication factor
+  async function createTopic(topicName: string): Promise<void> {
+    const admin = kafka.admin();
+    await admin.connect();
+    await admin.createTopics({
+      topics: [
+        {
+          topic: topicName,
+          numPartitions: 1,
+          replicationFactor: 1,
+        },
+      ],
     });
-    await consumer.connect();
-    await consumer.subscribe({ topic: testTopic, fromBeginning: true });
+    await admin.disconnect();
+  }
+
+  beforeEach(async () => {
+    // Consumer will be created in each test with unique topic
   });
 
   afterAll(async () => {
-    // Cleanup
+    // Cleanup - consumers are disconnected in each test
     console.log('[Integration Test] Cleaning up...');
-    if (consumer) {
-      await consumer.disconnect();
-    }
     if (kafkaContainer) {
       await kafkaContainer.stop();
     }
@@ -79,10 +91,21 @@ describe('Kafka Integration Tests', () => {
 
   it('publishes CSV data to Kafka and can be consumed', async () => {
     // Arrange: Set CSV data to serve
+    const testTopic = `test-csv-topic-${Date.now()}`;
     testCsvContent = `id,name,value,timestamp
 1,test-item-1,100,2024-01-01T00:00:00Z
 2,test-item-2,200,2024-01-02T00:00:00Z
 3,test-item-3,300,2024-01-03T00:00:00Z`;
+
+    // Create topic with proper replication factor
+    await createTopic(testTopic);
+
+    // Create consumer with unique topic
+    const testConsumer = kafka.consumer({
+      groupId: `${testGroupId}-${Date.now()}`,
+    });
+    await testConsumer.connect();
+    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -95,7 +118,7 @@ describe('Kafka Integration Tests', () => {
         );
       }, 15000);
 
-      consumer.run({
+      testConsumer.run({
         eachMessage: async ({ message }: EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
@@ -110,8 +133,13 @@ describe('Kafka Integration Tests', () => {
       });
     });
 
+    // Wait for consumer to be fully ready
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // Act: Publish CSV data to Kafka
-    const brokers = kafkaContainer.getConnectionString();
+    const host = kafkaContainer.getHost();
+    const port = kafkaContainer.getMappedPort(9093);
+    const brokers = `${host}:${port}`;
     await csvStreamToKafka({
       csvUrl: `${httpServerUrl}/test.csv`,
       topic: testTopic,
@@ -129,8 +157,10 @@ describe('Kafka Integration Tests', () => {
     // Assert: Verify messages were received
     expect(consumedMessages).toHaveLength(3);
 
-    // Verify message content
-    const messages = consumedMessages.map((msg) => JSON.parse(msg));
+    // Verify message content - sort by ID since Kafka doesn't guarantee order with batching
+    const messages = consumedMessages
+      .map((msg) => JSON.parse(msg))
+      .sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
     expect(messages[0]).toMatchObject({
       id: '1',
@@ -161,11 +191,12 @@ describe('Kafka Integration Tests', () => {
     );
 
     // Disconnect consumer after test
-    await consumer.disconnect();
+    await testConsumer.disconnect();
   }, 30000);
 
   it('handles batch publishing with configured batch size', async () => {
     // Arrange: Create larger CSV dataset
+    const testTopic = `test-batch-topic-${Date.now()}`;
     const rows = Array.from({ length: 10 }, (_, i) => ({
       id: i + 1,
       name: `batch-item-${i + 1}`,
@@ -176,6 +207,16 @@ describe('Kafka Integration Tests', () => {
     testCsvContent =
       'id,name,value,timestamp\n' +
       rows.map((r) => `${r.id},${r.name},${r.value},${r.timestamp}`).join('\n');
+
+    // Create topic with proper replication factor
+    await createTopic(testTopic);
+
+    // Create consumer with unique topic
+    const testConsumer = kafka.consumer({
+      groupId: `${testGroupId}-${Date.now()}`,
+    });
+    await testConsumer.connect();
+    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -188,7 +229,7 @@ describe('Kafka Integration Tests', () => {
         );
       }, 20000);
 
-      consumer.run({
+      testConsumer.run({
         eachMessage: async ({ message }: EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
@@ -203,8 +244,13 @@ describe('Kafka Integration Tests', () => {
       });
     });
 
+    // Wait for consumer to be fully ready
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // Act: Publish with batch size of 3
-    const brokers = kafkaContainer.getConnectionString();
+    const host = kafkaContainer.getHost();
+    const port = kafkaContainer.getMappedPort(9093);
+    const brokers = `${host}:${port}`;
     await csvStreamToKafka({
       csvUrl: `${httpServerUrl}/batch.csv`,
       topic: testTopic,
@@ -222,8 +268,10 @@ describe('Kafka Integration Tests', () => {
     // Assert: Verify all 10 messages received
     expect(consumedMessages).toHaveLength(10);
 
-    // Verify messages are correctly formatted
-    const messages = consumedMessages.map((msg) => JSON.parse(msg));
+    // Verify messages are correctly formatted - sort by ID first
+    const messages = consumedMessages
+      .map((msg) => JSON.parse(msg))
+      .sort((a, b) => parseInt(a.id) - parseInt(b.id));
     messages.forEach((msg, idx) => {
       expect(msg).toMatchObject({
         id: String(idx + 1),
@@ -239,16 +287,27 @@ describe('Kafka Integration Tests', () => {
     );
 
     // Disconnect consumer after test
-    await consumer.disconnect();
+    await testConsumer.disconnect();
   }, 35000);
 
   it('publishes messages with correct type metadata', async () => {
     // Arrange
+    const testTopic = `test-metadata-topic-${Date.now()}`;
     testCsvContent = `id,product,price
 1,laptop,999.99
 2,mouse,29.99`;
 
     const testType = 'products';
+
+    // Create topic with proper replication factor
+    await createTopic(testTopic);
+
+    // Create consumer with unique topic
+    const testConsumer = kafka.consumer({
+      groupId: `${testGroupId}-${Date.now()}`,
+    });
+    await testConsumer.connect();
+    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -261,7 +320,7 @@ describe('Kafka Integration Tests', () => {
         );
       }, 15000);
 
-      consumer.run({
+      testConsumer.run({
         eachMessage: async ({ message }: EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
@@ -276,7 +335,9 @@ describe('Kafka Integration Tests', () => {
     });
 
     // Act
-    const brokers = kafkaContainer.getConnectionString();
+    const host = kafkaContainer.getHost();
+    const port = kafkaContainer.getMappedPort(9093);
+    const brokers = `${host}:${port}`;
     await csvStreamToKafka({
       csvUrl: `${httpServerUrl}/products.csv`,
       topic: testTopic,
@@ -317,6 +378,6 @@ describe('Kafka Integration Tests', () => {
     console.log('[Integration Test] Successfully verified message metadata');
 
     // Disconnect consumer after test
-    await consumer.disconnect();
+    await testConsumer.disconnect();
   }, 30000);
 });
