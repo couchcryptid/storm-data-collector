@@ -32,6 +32,7 @@ See the [wiki](../../wiki) for full documentation:
 
 - [Architecture](../../wiki/Architecture) - Error handling, DLQ, and retry strategy
 - [Configuration](../../wiki/Configuration) - Environment variables and Zod validation
+- [Performance](../../wiki/Performance) - Throughput estimates, memory usage, and scaling
 - [Code Quality](../../wiki/Code-Quality) - Testing, coverage, git hooks
 - [Logging](../../wiki/Logging) - Pino structured logging and Chalk styling
 
