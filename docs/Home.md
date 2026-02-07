@@ -44,6 +44,7 @@ docker buildx build -t storm-data-collector .  # Multi-platform
 
 - [[Architecture]] - Error handling, DLQ, and retry strategy
 - [[Configuration]] - Environment variables and Zod validation
+- [[Performance]] - Throughput estimates, memory usage, and scaling
 - [[Code Quality]] - Testing, coverage, git hooks
 - [[Logging]] - Pino structured logging and Chalk styling
 

@@ -5,6 +5,7 @@
 **Guides**
 - [[Architecture]]
 - [[Configuration]]
+- [[Performance]]
 - [[Logging]]
 
 **Development**
