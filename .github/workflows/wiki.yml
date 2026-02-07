@@ -30,8 +30,12 @@ jobs:
 
       - name: Clone wiki repository
         run: |
-          git clone "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki 2>&1 | grep -v 'x-access-token' || \
-          (mkdir -p wiki && cd wiki && git init -b master && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
+          if ! git clone "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki 2>/dev/null; then
+            echo "Wiki repo not found, initializing fresh"
+            mkdir -p wiki && cd wiki && git init -b master
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+          fi
 
       - name: Sync wiki files
         run: |
@@ -51,5 +55,5 @@ jobs:
             git remote remove origin 2>/dev/null || true
             git remote add origin "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git"
             BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
-            git push -u origin "HEAD:refs/heads/${BRANCH}" 2>&1 | grep -v 'x-access-token'
+            git push -u origin "HEAD:refs/heads/${BRANCH}"
           fi
