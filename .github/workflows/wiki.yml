@@ -7,6 +7,9 @@ on:
     paths:
       - 'wiki/**'
 
+permissions:
+  contents: write
+
 jobs:
   publish-wiki:
     name: Publish Wiki to GitHub
@@ -17,9 +20,14 @@ jobs:
 
       - name: Clone wiki repository
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
         run: |
-          git clone https://github.com/${{ github.repository }}.wiki.git wiki_repo || \
+          # Prefer a user-provided PAT (WIKI_TOKEN). Fallback to GITHUB_TOKEN if not provided.
+          TOKEN="$WIKI_TOKEN"
+          if [ -z "$TOKEN" ]; then
+            TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          fi
+          git clone "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki_repo || \
           (mkdir -p wiki_repo && cd wiki_repo && git init && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
 
       - name: Sync wiki files
@@ -31,15 +39,19 @@ jobs:
 
       - name: Commit and push wiki changes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
         run: |
+          # Use same TOKEN logic as clone step
+          TOKEN="$WIKI_TOKEN"
+          if [ -z "$TOKEN" ]; then
+            TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          fi
           cd wiki_repo
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "docs: sync wiki from repository"
-            # Ensure remote uses token for authentication and push current HEAD
             git remote remove origin 2>/dev/null || true
-            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
+            git remote add origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.wiki.git"
             BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "main")
             git push -u origin HEAD:refs/heads/${BRANCH}
           fi
