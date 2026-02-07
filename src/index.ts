@@ -2,6 +2,8 @@ import { startScheduler } from './scheduler/scheduler.js';
 import { startHealthServer } from './health.js';
 import { config } from './config.js';
 
+const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10000;
+
 console.log('Starting CSV Cron job with the following configuration:');
 console.log(`CSV Base URL: ${config.csvBaseUrl}`);
 console.log(`CSV Types: ${config.csvTypes.join(', ')}`);
@@ -9,8 +11,16 @@ console.log(`Kafka Topic: ${config.topic}`);
 console.log(`Kafka Client ID: ${config.kafka.clientId}`);
 console.log(`Kafka Brokers: ${config.kafka.brokers.join(',')}`);
 console.log(`Batch Size: ${config.batchSize}`);
+console.log(`Max Concurrent CSV: ${config.maxConcurrentCsv}`);
 console.log(`Cron Schedule: ${config.cron.schedule}`);
-console.log(`Cron Retry Interval (hours): ${config.cron.retryInterval}`);
+console.log(
+  `Retry Config: ${config.cron.retryIntervalMin}min base interval, ${config.cron.maxFallbackAttempts} max attempts`
+);
+console.log(`DLQ: ${config.dlq.enabled ? 'Enabled' : 'Disabled'}`);
+if (config.dlq.enabled) {
+  console.log(`DLQ Topic: ${config.dlq.topic}`);
+  console.log(`DLQ File Fallback: ${config.dlq.fileFallback.directory}`);
+}
 
 // Start health check server (for Docker health checks)
 const healthServer = startHealthServer(3000);
@@ -32,11 +42,11 @@ const shutdown = (signal: string) => {
     process.exit(0);
   });
 
-  // Force exit after 10 seconds if graceful shutdown fails
+  // Force exit after timeout if graceful shutdown fails
   setTimeout(() => {
     console.error('Forced shutdown after timeout');
     process.exit(1);
-  }, 10000);
+  }, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
 };
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));

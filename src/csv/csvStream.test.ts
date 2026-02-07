@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Readable } from 'stream';
-import { csvStreamToKafka, CsvStreamOptions } from './csvStream.js';
+import { csvStreamToKafka, CsvStreamOptions, HttpError } from './csvStream.js';
 
 // --- Mock fetch ---
 global.fetch = vi.fn();
@@ -182,7 +182,7 @@ describe('csvStreamToKafka', () => {
     expect(mockDisconnect).toHaveBeenCalled();
   });
 
-  it('throws on fetch failure with realistic URL', async () => {
+  it('throws HttpError with 404 status code when CSV not found', async () => {
     (global.fetch as any).mockResolvedValue({
       ok: false,
       status: 404,
@@ -197,9 +197,66 @@ describe('csvStreamToKafka', () => {
       type: 'missing',
     };
 
+    await expect(csvStreamToKafka(options)).rejects.toThrow(HttpError);
     await expect(csvStreamToKafka(options)).rejects.toThrow(
       'Failed to fetch CSV'
     );
+
+    try {
+      await csvStreamToKafka(options);
+    } catch (err) {
+      expect(err).toBeInstanceOf(HttpError);
+      expect((err as HttpError).statusCode).toBe(404);
+    }
+  });
+
+  it('throws HttpError with 500 status code on server error', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      status: 500,
+      body: null,
+    });
+
+    const options: CsvStreamOptions = {
+      csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_error.csv',
+      topic: 'raw-weather-reports',
+      kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
+      batchSize: 500,
+      type: 'error',
+    };
+
+    try {
+      await csvStreamToKafka(options);
+      expect.fail('Should have thrown an error');
+    } catch (err) {
+      expect(err).toBeInstanceOf(HttpError);
+      expect((err as HttpError).statusCode).toBe(500);
+      expect((err as HttpError).message).toContain('status 500');
+    }
+  });
+
+  it('throws HttpError with 400 status code on client error', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      status: 400,
+      body: null,
+    });
+
+    const options: CsvStreamOptions = {
+      csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_bad.csv',
+      topic: 'raw-weather-reports',
+      kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
+      batchSize: 500,
+      type: 'bad',
+    };
+
+    try {
+      await csvStreamToKafka(options);
+      expect.fail('Should have thrown an error');
+    } catch (err) {
+      expect(err).toBeInstanceOf(HttpError);
+      expect((err as HttpError).statusCode).toBe(400);
+    }
   });
 
   it('throws when res.body is null', async () => {

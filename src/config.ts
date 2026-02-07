@@ -6,13 +6,18 @@ const envSchema = z.object({
   KAFKA_CLIENT_ID: z.string().default('csv-producer'),
   KAFKA_BROKERS: z.string().default('localhost:9092'),
   KAFKA_TOPIC: z.string().default('raw-weather-reports'),
+  KAFKA_DLQ_TOPIC: z.string().default('weather-data-dlq'),
   CRON_SCHEDULE: z.string().default('0 0 * * *'),
-  CRON_RETRY_INTERVAL: z.coerce.number().positive().default(6),
+  CRON_RETRY_INTERVAL_MIN: z.coerce.number().positive().max(120).default(30),
+  CRON_MAX_FALLBACK_ATTEMPTS: z.coerce.number().positive().max(5).default(3),
   CSV_BASE_URL: z.url().default('https://example.com/'),
   BATCH_SIZE: z.coerce.number().positive().default(500),
   MAX_CONCURRENT_CSV: z.coerce.number().positive().max(10).default(3),
-  RETRY_HOURS: z.coerce.number().positive().max(48).default(6),
   CSV_TYPES: z.string().default('torn,hail,wind'),
+  DLQ_ENABLED: z.coerce.boolean().default(true),
+  DLQ_FILE_FALLBACK_DIR: z.string().default('./data/dlq'),
+  DLQ_FILE_MAX_SIZE_MB: z.coerce.number().positive().default(10),
+  DLQ_INCLUDE_STACK_TRACES: z.coerce.boolean().default(true),
 });
 
 // Parse and validate environment variables
@@ -20,12 +25,18 @@ const env = envSchema.parse({
   KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID,
   KAFKA_BROKERS: process.env.KAFKA_BROKERS,
   KAFKA_TOPIC: process.env.KAFKA_TOPIC,
+  KAFKA_DLQ_TOPIC: process.env.KAFKA_DLQ_TOPIC,
   CSV_BASE_URL: process.env.CSV_BASE_URL,
   CRON_SCHEDULE: process.env.CRON_SCHEDULE,
-  CRON_RETRY_INTERVAL: process.env.CRON_RETRY_INTERVAL,
+  CRON_RETRY_INTERVAL_MIN: process.env.CRON_RETRY_INTERVAL_MIN,
+  CRON_MAX_FALLBACK_ATTEMPTS: process.env.CRON_MAX_FALLBACK_ATTEMPTS,
   BATCH_SIZE: process.env.BATCH_SIZE,
   MAX_CONCURRENT_CSV: process.env.MAX_CONCURRENT_CSV,
   CSV_TYPES: process.env.CSV_TYPES,
+  DLQ_ENABLED: process.env.DLQ_ENABLED,
+  DLQ_FILE_FALLBACK_DIR: process.env.DLQ_FILE_FALLBACK_DIR,
+  DLQ_FILE_MAX_SIZE_MB: process.env.DLQ_FILE_MAX_SIZE_MB,
+  DLQ_INCLUDE_STACK_TRACES: process.env.DLQ_INCLUDE_STACK_TRACES,
 });
 
 // Application configuration with validated values
@@ -40,7 +51,17 @@ export const config = {
   maxConcurrentCsv: env.MAX_CONCURRENT_CSV,
   cron: {
     schedule: env.CRON_SCHEDULE,
-    retryInterval: env.CRON_RETRY_INTERVAL,
+    retryIntervalMin: env.CRON_RETRY_INTERVAL_MIN,
+    maxFallbackAttempts: env.CRON_MAX_FALLBACK_ATTEMPTS,
   },
   csvTypes: env.CSV_TYPES.split(',').map((t) => t.trim()),
+  dlq: {
+    enabled: env.DLQ_ENABLED,
+    topic: env.KAFKA_DLQ_TOPIC,
+    fileFallback: {
+      directory: env.DLQ_FILE_FALLBACK_DIR,
+      maxSizeMb: env.DLQ_FILE_MAX_SIZE_MB,
+    },
+    includeStackTraces: env.DLQ_INCLUDE_STACK_TRACES,
+  },
 };
