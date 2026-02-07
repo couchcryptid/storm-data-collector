@@ -1,6 +1,6 @@
 # Storm Report Data Collection Service
 
-Modern NodeJS + Typescript storm report data collector for HailTrace using Kafka streaming. Fetches wind, hail, and tornado CSV reports, converts them to JSON format, and publishes them to Kafka.
+Modern NodeJS + Typescript storm report data collector using Kafka streaming. Fetches wind, hail, and tornado CSV reports, converts them to JSON format, and publishes them to Kafka.
 
 ## Quick Start
 

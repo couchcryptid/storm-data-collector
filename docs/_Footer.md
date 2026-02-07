@@ -1,1 +1,1 @@
-Storm Report Data Collection Service | HailTrace
+Storm Report Data Collection Service
