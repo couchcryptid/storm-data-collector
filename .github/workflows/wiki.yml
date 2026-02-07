@@ -16,17 +16,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone wiki repository
-        run: git clone https://github.com/${{ github.repository }}.wiki.git wiki_repo
+        run: git clone https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki_repo 2>/dev/null || git clone https://github.com/${{ github.repository }}.wiki.git wiki_repo
 
       - name: Sync wiki files
         run: |
-          cp wiki/*.md wiki_repo/
+          cp wiki/*.md wiki_repo/ || echo "No wiki files to copy"
           cd wiki_repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push wiki changes
         run: |
           cd wiki_repo
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git diff --cached --quiet || (git commit -m "docs: sync wiki from repository" && git push)
+          git diff --cached --quiet || (git commit -m "docs: sync wiki from repository" && git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git)
