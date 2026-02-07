@@ -33,7 +33,7 @@ async function processCsvWithFallback(
 ): Promise<boolean> {
   const maxAttempts = config.cron.maxFallbackAttempts;
   const currentAttempt = retryAttempts.get(type) || 0;
-  const url = buildCsvUrl(config.csvBaseUrl, type, date);
+  const url = buildCsvUrl(config.reportsBaseUrl, type, date);
 
   try {
     console.log(
@@ -129,8 +129,8 @@ async function runJob() {
 
   // Process CSVs with concurrency control
   const concurrent = config.maxConcurrentCsv;
-  for (let i = 0; i < config.csvTypes.length; i += concurrent) {
-    const batch = config.csvTypes.slice(i, i + concurrent);
+  for (let i = 0; i < config.reportTypes.length; i += concurrent) {
+    const batch = config.reportTypes.slice(i, i + concurrent);
 
     const batchResults = await Promise.allSettled(
       batch.map(async (type) => ({

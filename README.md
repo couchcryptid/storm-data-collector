@@ -71,10 +71,10 @@ KAFKA_CLIENT_ID=storm-collector
 KAFKA_TOPIC=raw-weather-reports
 
 # CSV Data Source
-CSV_BASE_URL=https://example.com/
+REPORTS_BASE_URL=https://example.com/
 BATCH_SIZE=500
 MAX_CONCURRENT_CSV=3
-CSV_TYPES=torn,wind,hail
+REPORT_TYPES=torn,wind,hail
 
 # Cron Configuration
 CRON_SCHEDULE="0 0 * * *"

@@ -5,8 +5,8 @@ import { config } from './config.js';
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10000;
 
 console.log('Starting CSV Cron job with the following configuration:');
-console.log(`CSV Base URL: ${config.csvBaseUrl}`);
-console.log(`CSV Types: ${config.csvTypes.join(', ')}`);
+console.log(`CSV Base URL: ${config.reportsBaseUrl}`);
+console.log(`CSV Types: ${config.reportTypes.join(', ')}`);
 console.log(`Kafka Topic: ${config.topic}`);
 console.log(`Kafka Client ID: ${config.kafka.clientId}`);
 console.log(`Kafka Brokers: ${config.kafka.brokers.join(',')}`);

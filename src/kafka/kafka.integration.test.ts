@@ -365,7 +365,7 @@ describe('Kafka Integration Tests', () => {
         brokers: [brokers],
       },
       batchSize: 3, // Batch size of 3
-      type: 'torn', // Using CSV_TYPES from env vars
+      type: 'torn', // Using REPORT_TYPES from env vars
     });
 
     // Wait for all messages
@@ -425,7 +425,7 @@ describe('Kafka Integration Tests', () => {
 1245,UNK,Mcalester,Pittsburg,OK,34.94,-95.77,Large trees and power lines down. (TSA)
 1251,65,4 N Dow,Pittsburg,OK,34.94,-95.59,(TSA)`;
 
-    const testType = 'wind'; // Using CSV_TYPES from env vars
+    const testType = 'wind'; // Using REPORT_TYPES from env vars
 
     // Create topic with proper replication factor
     await createTopic(testTopic);
@@ -526,7 +526,7 @@ describe('Kafka Integration Tests', () => {
   }, 30000);
 
   it('publishes all three storm report types (torn, hail, wind) from environment config', async () => {
-    // Arrange: Test all three CSV types from CSV_TYPES env var
+    // Arrange: Test all three CSV types from REPORT_TYPES env var
     const testTopic = `raw-weather-reports-${Date.now()}`; // Unique topic per test
 
     // Create topic with proper replication factor

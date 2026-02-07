@@ -19,23 +19,23 @@ See [src/config.ts](src/config.ts) for the validation schema.
 - `KAFKA_BROKERS` - String (default: "localhost:9092")
 - `KAFKA_CLIENT_ID` - String (default: "storm-data-collector")
 - `KAFKA_TOPIC` - String (default: "raw-weather-reports")
-- `CSV_BASE_URL` - Valid URL (default: "https://example.com/")
+- `REPORTS_BASE_URL` - Valid URL (default: "https://example.com/")
 - `BATCH_SIZE` - Positive number (default: 500)
 - `MAX_CONCURRENT_CSV` - Positive number, max 10 (default: 3)
 - `CRON_SECHEDULE` - String (default "0 0 \* \* \*")
-- `CRON_RETRY_INTERVAL` - Positive number, max 48 (default: 6)
-- `CSV_TYPES` - Comma-separated string (default: "torn,hail,wind")
+- `CRON_FALLBACK_INTERVAL_MIN` - Positive number, max 48 (default: 6)
+- `REPORT_TYPES` - Comma-separated string (default: "torn,hail,wind")
 
 ### Example Error
 
 ```bash
-$ CSV_BASE_URL="not-a-url" npm run dev
+$ REPORTS_BASE_URL="not-a-url" npm run dev
 
 ZodError: [
   {
     "code": "invalid_format",
     "format": "url",
-    "path": ["CSV_BASE_URL"],
+    "path": ["REPORTS_BASE_URL"],
     "message": "Invalid URL"
   }
 ]
@@ -305,7 +305,7 @@ Test Files  3 passed (3)
 
 ### "ZodError: Invalid URL"
 
-- Check `CSV_BASE_URL` in `.env` file
+- Check `REPORTS_BASE_URL` in `.env` file
 - Must be a valid URL format (e.g., `https://example.com/`)
 
 ### "husky - pre-commit script failed"
