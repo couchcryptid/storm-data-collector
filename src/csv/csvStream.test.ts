@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Readable } from 'stream';
 import { csvStreamToKafka, CsvStreamOptions, HttpError } from './csvStream.js';
 
-// --- Mock logger ---
 vi.mock('../logger.js', () => ({
   default: {
     info: vi.fn(),
@@ -11,10 +9,8 @@ vi.mock('../logger.js', () => ({
   },
 }));
 
-// --- Mock fetch ---
 global.fetch = vi.fn();
 
-// --- Mock Kafka Producer ---
 const mockSend = vi.fn();
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
@@ -34,6 +30,14 @@ vi.mock('kafkajs', () => {
   };
 });
 
+function mockFetch(csvData: string) {
+  (global.fetch as any).mockResolvedValue({
+    ok: true,
+    body: true,
+    text: () => Promise.resolve(csvData),
+  });
+}
+
 function buildOptions(
   overrides: Partial<CsvStreamOptions> = {}
 ): CsvStreamOptions {
@@ -41,7 +45,6 @@ function buildOptions(
     csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_hail.csv',
     topic: 'raw-weather-reports',
     kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
-    batchSize: 500,
     type: 'hail',
     ...overrides,
   };
@@ -53,17 +56,12 @@ describe('csvStreamToKafka', () => {
   });
 
   it('parses real hail report CSV and injects type correctly', async () => {
-    // Real data from data/mock/hail_reports_240426_trimmed.csv
     const csvData =
       'Time,Size,Location,County,State,Lat,Lon,Comments\n' +
       '1510,125,8 ESE Chappel,San Saba,TX,31.02,-98.44,1.25 inch hail reported at Colorado Bend State Park. (SJT)\n' +
       '1703,100,3 SE Burleson,Johnson,TX,32.5,-97.29,Quarter hail reported. (FWD)\n';
 
-    const readable = Readable.from([csvData]);
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      body: Readable.toWeb(readable),
-    });
+    mockFetch(csvData);
 
     await csvStreamToKafka(buildOptions());
 
@@ -98,17 +96,12 @@ describe('csvStreamToKafka', () => {
   });
 
   it('parses real tornado report CSV with correct fields', async () => {
-    // Real data from data/mock/tornado_reports_240426_trimmed.csv
     const csvData =
       'Time,F_Scale,Location,County,State,Lat,Lon,Comments\n' +
       '1223,UNK,2 N Mcalester,Pittsburg,OK,34.96,-95.77,This tornado moved across the northwest side of McAlester... damaging the roofs of homes... uprooting trees... and snapping power poles. The damage survey was conducted (TSA)\n' +
       '1716,UNK,2 ESE Ravenna,Buffalo,NE,41.02,-98.87,This tornado touched down at 1216 PM CDT 2 miles east southeast of Ravenna... and lifted at 1231 PM CDT 3 miles north of Ravenna. The rating was EF1... with an estimate (GID)\n';
 
-    const readable = Readable.from([csvData]);
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      body: Readable.toWeb(readable),
-    });
+    mockFetch(csvData);
 
     await csvStreamToKafka(
       buildOptions({
@@ -132,17 +125,12 @@ describe('csvStreamToKafka', () => {
   });
 
   it('parses real wind report CSV', async () => {
-    // Real data from data/mock/wind_reports_240426_trimmed.csv
     const csvData =
       'Time,Speed,Location,County,State,Lat,Lon,Comments\n' +
       '1245,UNK,Mcalester,Pittsburg,OK,34.94,-95.77,Large trees and power lines down. (TSA)\n' +
       '1251,65,4 N Dow,Pittsburg,OK,34.94,-95.59,(TSA)\n';
 
-    const readable = Readable.from([csvData]);
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      body: Readable.toWeb(readable),
-    });
+    mockFetch(csvData);
 
     await csvStreamToKafka(
       buildOptions({
@@ -166,11 +154,7 @@ describe('csvStreamToKafka', () => {
   });
 
   it('handles empty CSV gracefully', async () => {
-    const readable = Readable.from(['']);
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      body: Readable.toWeb(readable),
-    });
+    mockFetch('');
 
     await csvStreamToKafka(
       buildOptions({
@@ -260,8 +244,7 @@ describe('csvStreamToKafka', () => {
     );
   });
 
-  it('respects configured batch size with real data', async () => {
-    // Create 5 rows of data
+  it('publishes all rows in a single batch', async () => {
     const csvData =
       'Time,Size,Location,County,State,Lat,Lon,Comments\n' +
       '1510,125,8 ESE Chappel,San Saba,TX,31.02,-98.44,Report 1\n' +
@@ -270,15 +253,13 @@ describe('csvStreamToKafka', () => {
       '1709,100,2 SE Kennedale,Tarrant,TX,32.63,-97.21,Report 4\n' +
       '1710,175,2 NE Kennedale,Tarrant,TX,32.77,-97.31,Report 5\n';
 
-    const readable = Readable.from([csvData]);
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      body: Readable.toWeb(readable),
-    });
+    mockFetch(csvData);
 
-    await csvStreamToKafka(buildOptions({ batchSize: 2 }));
+    await csvStreamToKafka(buildOptions());
 
-    // With 5 rows and batch size 2: 2 + 2 + 1 = 3 calls to send
-    expect(mockSend).toHaveBeenCalledTimes(3);
+    // All 5 rows in a single send call
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const messages = mockSend.mock.calls[0]?.[0]?.messages;
+    expect(messages.length).toBe(5);
   });
 });

@@ -6,16 +6,13 @@ import logger from '../logger.js';
 import { HTTP_STATUS_CODES, TIMING } from '../shared/constants.js';
 import { getErrorMessage, isHttpError } from '../shared/errors.js';
 
-/**
- * Delay execution for specified milliseconds
- */
+const RETRY_INTERVAL_MS = 5 * TIMING.MS_PER_MINUTE;
+const MAX_RETRY_ATTEMPTS = 3;
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Check if HTTP error is a server error (5xx)
- */
 function isServerError(statusCode: number): boolean {
   return (
     statusCode >= HTTP_STATUS_CODES.SERVER_ERROR_MIN &&
@@ -23,9 +20,6 @@ function isServerError(statusCode: number): boolean {
   );
 }
 
-/**
- * Check if HTTP error is a client error (4xx)
- */
 function isClientError(statusCode: number): boolean {
   return (
     statusCode >= HTTP_STATUS_CODES.CLIENT_ERROR_MIN &&
@@ -33,158 +27,114 @@ function isClientError(statusCode: number): boolean {
   );
 }
 
-/**
- * Calculate exponential fallback delay in milliseconds
- * Formula: baseInterval * 2^attemptNumber
- * @param attemptNumber - Zero-based attempt number (0 = first retry)
- * @param baseIntervalMinutes - Base interval in minutes
- */
-function calculateFallbackDelay(
-  attemptNumber: number,
-  baseIntervalMinutes: number
-): number {
-  const exponentialMultiplier = Math.pow(2, attemptNumber);
-  return baseIntervalMinutes * exponentialMultiplier * TIMING.MS_PER_MINUTE;
-}
-
-/**
- * Process a single CSV type with exponential fallback on 500 errors
- * @returns true if successful, false if failed permanently
- */
-async function processCsvWithFallback(
-  type: string,
-  date: Date,
-  retryAttempts: Map<string, number>
-): Promise<boolean> {
-  const maxAttempts = config.cron.maxFallbackAttempts;
-  const currentAttempt = retryAttempts.get(type) || 0;
+async function processCsv(type: string, date: Date): Promise<boolean> {
   const url = buildCsvUrl(config.reportsBaseUrl, type, date);
 
-  try {
-    logger.info(
-      { url, attempt: currentAttempt + 1, maxAttempts: maxAttempts + 1 },
-      'Attempting CSV'
-    );
-
-    await csvStreamToKafka({
-      csvUrl: url,
-      topic: config.topic,
-      kafka: config.kafka,
-      batchSize: config.batchSize,
-      type,
-    });
-
-    logger.info({ url, type }, 'CSV processing completed successfully');
-    return true;
-  } catch (err) {
-    if (!isHttpError(err)) {
-      // Network or non-HTTP errors
-      logger.error(
-        { url, error: getErrorMessage(err) },
-        'Failed to process CSV'
+  for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS + 1; attempt++) {
+    try {
+      logger.info(
+        { url, attempt, maxAttempts: MAX_RETRY_ATTEMPTS + 1 },
+        'Attempting CSV'
       );
-      return false;
-    }
 
-    const statusCode = err.statusCode;
+      await csvStreamToKafka({
+        csvUrl: url,
+        topic: config.topic,
+        kafka: config.kafka,
+        type,
+      });
 
-    // Retry on server errors (5xx) with exponential backoff
-    if (isServerError(statusCode)) {
-      if (currentAttempt < maxAttempts) {
-        const delayMs = calculateFallbackDelay(
-          currentAttempt,
-          config.cron.fallbackIntervalMin
+      logger.info({ url, type }, 'CSV processing completed successfully');
+      return true;
+    } catch (err) {
+      if (!isHttpError(err)) {
+        logger.error(
+          { url, error: getErrorMessage(err) },
+          'Failed to process CSV'
         );
-        const delayMinutes = Math.round(delayMs / TIMING.MS_PER_MINUTE);
+        return false;
+      }
 
+      const statusCode = err.statusCode;
+
+      if (isServerError(statusCode) && attempt <= MAX_RETRY_ATTEMPTS) {
         logger.warn(
           {
             url,
             statusCode,
-            delayMinutes,
-            attempt: currentAttempt + 1,
-            maxAttempts,
+            delayMinutes: 5,
+            attempt,
+            maxAttempts: MAX_RETRY_ATTEMPTS,
           },
-          'Server error, retrying with exponential backoff'
+          'Server error, retrying'
         );
+        await delay(RETRY_INTERVAL_MS);
+        continue;
+      }
 
-        await delay(delayMs);
-        retryAttempts.set(type, currentAttempt + 1);
-        return await processCsvWithFallback(type, date, retryAttempts);
-      } else {
+      if (isServerError(statusCode)) {
         logger.error(
-          { url, maxAttempts, statusCode },
+          { url, maxAttempts: MAX_RETRY_ATTEMPTS, statusCode },
           'Max retry attempts reached'
         );
         return false;
       }
-    }
 
-    // Handle specific client errors
-    if (statusCode === HTTP_STATUS_CODES.NOT_FOUND) {
-      logger.warn({ url }, 'CSV not found (404), skipping');
+      if (statusCode === HTTP_STATUS_CODES.NOT_FOUND) {
+        logger.warn({ url }, 'CSV not found (404), skipping');
+        return false;
+      }
+
+      if (isClientError(statusCode)) {
+        logger.error({ url, statusCode, message: err.message }, 'Client error');
+        return false;
+      }
+
+      logger.error({ url, statusCode, message: err.message }, 'HTTP error');
       return false;
     }
-
-    if (isClientError(statusCode)) {
-      logger.error({ url, statusCode, message: err.message }, 'Client error');
-      return false;
-    }
-
-    // Other HTTP errors
-    logger.error({ url, statusCode, message: err.message }, 'HTTP error');
-    return false;
   }
+
+  return false;
 }
 
 async function runJob() {
   logger.info('Starting CSV job');
 
   const date = new Date();
-  const retryAttempts = new Map<string, number>();
-  const results: { type: string; success: boolean }[] = [];
 
-  // Process CSVs with concurrency control
-  const concurrent = config.maxConcurrentCsv;
-  for (let i = 0; i < config.reportTypes.length; i += concurrent) {
-    const batch = config.reportTypes.slice(i, i + concurrent);
+  const results = await Promise.allSettled(
+    config.reportTypes.map(async (type) => ({
+      type,
+      success: await processCsv(type, date),
+    }))
+  );
 
-    const batchResults = await Promise.allSettled(
-      batch.map(async (type) => ({
-        type,
-        success: await processCsvWithFallback(type, date, retryAttempts),
-      }))
-    );
+  let successful = 0;
+  let failed = 0;
 
-    batchResults.forEach((result) => {
-      if (result.status === 'fulfilled') {
-        results.push(result.value);
-      } else {
-        logger.error(
-          { error: result.reason },
-          'Unexpected error in batch processing'
-        );
-      }
-    });
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      if (result.value.success) successful++;
+      else failed++;
+    } else {
+      logger.error({ error: result.reason }, 'Unexpected error processing CSV');
+      failed++;
+    }
   }
 
-  const successful = results.filter((jobResult) => jobResult.success).length;
-  const failed = results.filter((jobResult) => !jobResult.success).length;
-
   logger.info(
-    { successful, failed, total: results.length },
+    { successful, failed, total: config.reportTypes.length },
     'CSV job finished'
   );
 }
 
 export function startScheduler() {
-  // Run immediately on startup
   logger.info('Running initial job immediately');
   runJob().catch((err) => {
     logger.error({ error: getErrorMessage(err) }, 'Initial job failed');
   });
 
-  // Schedule for regular execution
   new Cron(config.cron.schedule, async () => {
     await runJob();
   });

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock logger before importing scheduler
 vi.mock('../logger.js', () => ({
   default: {
     info: vi.fn(),
@@ -9,9 +8,7 @@ vi.mock('../logger.js', () => ({
   },
 }));
 
-// Mock dependencies before importing
 vi.mock('../csv/csvStream.js', () => {
-  // Define HttpError inside the mock factory
   class HttpError extends Error {
     constructor(
       message: string,
@@ -32,15 +29,11 @@ vi.mock('../config.js', () => ({
   config: {
     cron: {
       schedule: '0 1 * * *',
-      fallbackIntervalMin: 30,
-      maxFallbackAttempts: 3,
     },
     reportsBaseUrl: 'https://www.spc.noaa.gov/climo/reports/',
     reportTypes: ['torn', 'hail', 'wind'],
     topic: 'raw-weather-reports',
     kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
-    batchSize: 500,
-    maxConcurrentCsv: 3,
   },
 }));
 
@@ -50,7 +43,6 @@ vi.mock('../csv/utils.js', () => ({
   ),
 }));
 
-// Mock Croner
 let storedCronCallback: (() => void) | null = null;
 
 vi.mock('croner', () => {
@@ -68,7 +60,7 @@ import { startScheduler } from './scheduler.js';
 import { csvStreamToKafka, HttpError } from '../csv/csvStream.js';
 import logger from '../logger.js';
 
-describe('startScheduler with exponential fallback', () => {
+describe('startScheduler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -86,7 +78,6 @@ describe('startScheduler with exponential fallback', () => {
 
     expect(storedCronCallback).toBeDefined();
 
-    // Check for the scheduler started log with pattern
     const infoCall = (logger.info as any).mock.calls.find(
       (call: any) =>
         call[1]?.includes?.('Scheduler started') || call[0]?.pattern
@@ -104,7 +95,6 @@ describe('startScheduler with exponential fallback', () => {
 
     expect(csvStreamToKafka).toHaveBeenCalledTimes(3);
 
-    // Check for the CSV job finished log with counts
     const finishedCall = (logger.info as any).mock.calls.find((call: any) =>
       call[1]?.includes?.('CSV job finished')
     );
@@ -117,7 +107,7 @@ describe('startScheduler with exponential fallback', () => {
     expect(finishedCall[1]).toBe('CSV job finished');
   });
 
-  it('retries with exponential backoff on 500 error', async () => {
+  it('retries on 500 error with 5-minute delay', async () => {
     let callCount = 0;
     (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
       if (type === 'hail') {
@@ -135,10 +125,10 @@ describe('startScheduler with exponential fallback', () => {
       await vi.runAllTimersAsync();
     })();
 
-    // First retry after 30 minutes
-    await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
-    // Second retry after 60 minutes
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    // First retry after 5 minutes
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    // Second retry after another 5 minutes
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
 
     await jobPromise;
 
@@ -148,13 +138,12 @@ describe('startScheduler with exponential fallback', () => {
     );
     expect(hailCalls.length).toBe(3);
 
-    // Check for warning log with 500 status code
     const warnCall = (logger.warn as any).mock.calls.find(
       (call: any) => call[0]?.statusCode === 500
     );
     expect(warnCall).toBeDefined();
     expect(warnCall[0].statusCode).toBe(500);
-    expect(warnCall[1]).toBe('Server error, retrying with exponential backoff');
+    expect(warnCall[1]).toBe('Server error, retrying');
   });
 
   it('stops retrying after max attempts on 500 errors', async () => {
@@ -171,10 +160,10 @@ describe('startScheduler with exponential fallback', () => {
       await vi.runAllTimersAsync();
     })();
 
-    // Advance through all retry attempts
-    await vi.advanceTimersByTimeAsync(30 * 60 * 1000); // First retry
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000); // Second retry
-    await vi.advanceTimersByTimeAsync(120 * 60 * 1000); // Third retry
+    // Advance through all retry attempts (3 retries × 5 min each)
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
 
     await jobPromise;
 
@@ -185,7 +174,6 @@ describe('startScheduler with exponential fallback', () => {
     // Should be 4 total: initial + 3 retries
     expect(hailCalls.length).toBe(4);
 
-    // Check for max attempts error log
     const errorCall = (logger.error as any).mock.calls.find(
       (call: any) => call[0]?.maxAttempts === 3 && call[0]?.statusCode === 500
     );
@@ -209,10 +197,8 @@ describe('startScheduler with exponential fallback', () => {
       (call: any) => call[0].type === 'hail'
     );
 
-    // Only 1 attempt for 404
     expect(hailCalls.length).toBe(1);
 
-    // Check for 404 warning log
     const warnCall = (logger.warn as any).mock.calls.find((call: any) =>
       call[1]?.includes?.('CSV not found (404)')
     );
@@ -235,10 +221,8 @@ describe('startScheduler with exponential fallback', () => {
       (call: any) => call[0].type === 'hail'
     );
 
-    // Only 1 attempt for 400
     expect(hailCalls.length).toBe(1);
 
-    // Check for 400 error log
     const errorCall = (logger.error as any).mock.calls.find(
       (call: any) =>
         call[0]?.statusCode === 400 && call[1]?.includes?.('Client error')
@@ -264,20 +248,18 @@ describe('startScheduler with exponential fallback', () => {
       await vi.runAllTimersAsync();
     })();
 
-    // Advance timers for wind retries
-    await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
-    await vi.advanceTimersByTimeAsync(120 * 60 * 1000);
+    // Advance timers for wind retries (3 retries × 5 min)
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
 
     await jobPromise;
 
-    // Torn should succeed (1 call)
     const tornCalls = (csvStreamToKafka as any).mock.calls.filter(
       (call: any) => call[0].type === 'torn'
     );
     expect(tornCalls.length).toBe(1);
 
-    // Hail should fail with 404 (1 call, no retry)
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
       (call: any) => call[0].type === 'hail'
     );
@@ -289,7 +271,6 @@ describe('startScheduler with exponential fallback', () => {
     );
     expect(windCalls.length).toBe(4);
 
-    // Verify final count logged
     const finishedCall = (logger.info as any).mock.calls.find(
       (call: any) => call[0]?.successful !== undefined
     );
@@ -298,7 +279,7 @@ describe('startScheduler with exponential fallback', () => {
     expect(finishedCall[0].failed).toBe(2);
   });
 
-  it('respects maxConcurrentCsv limit', async () => {
+  it('processes all types concurrently via Promise.all', async () => {
     let concurrentCalls = 0;
     let maxConcurrent = 0;
 
@@ -317,7 +298,8 @@ describe('startScheduler with exponential fallback', () => {
     startScheduler();
     await vi.runAllTimersAsync();
 
-    expect(maxConcurrent).toBeLessThanOrEqual(3);
+    // All 3 types should run concurrently
+    expect(maxConcurrent).toBe(3);
   });
 
   it('logs start and finish messages with context data', async () => {
@@ -326,13 +308,11 @@ describe('startScheduler with exponential fallback', () => {
     startScheduler();
     await vi.runAllTimersAsync();
 
-    // Check for "Starting CSV job" log
     const startCall = (logger.info as any).mock.calls.find(
       (call: any) => call[0] === 'Starting CSV job'
     );
     expect(startCall).toBeDefined();
 
-    // Check for "CSV job finished" log with context
     const finishCall = (logger.info as any).mock.calls.find(
       (call: any) =>
         call[0]?.successful !== undefined && call[1] === 'CSV job finished'
@@ -363,12 +343,11 @@ describe('startScheduler with exponential fallback', () => {
       await vi.runAllTimersAsync();
     })();
 
-    await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
 
     await jobPromise;
 
-    // Check for "Attempting CSV" log with attempt info
     const attemptCall = (logger.info as any).mock.calls.find(
       (call: any) =>
         call[0]?.attempt !== undefined && call[1] === 'Attempting CSV'
@@ -393,10 +372,8 @@ describe('startScheduler with exponential fallback', () => {
       (call: any) => call[0].type === 'hail'
     );
 
-    // Only 1 attempt for network errors
     expect(hailCalls.length).toBe(1);
 
-    // Check for error log
     const errorCall = (logger.error as any).mock.calls.find((call: any) =>
       call[0]?.error?.includes?.('Network timeout')
     );

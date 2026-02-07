@@ -144,10 +144,9 @@ describe('Kafka Integration Tests', () => {
       csvUrl: `${httpServerUrl}/hail.csv`,
       topic: testTopic,
       kafka: {
-        clientId: 'storm-data-collector', // From env vars
+        clientId: 'storm-data-collector',
         brokers: [brokers],
       },
-      batchSize: 500, // From env vars
       type: 'hail',
     });
 
@@ -364,8 +363,7 @@ describe('Kafka Integration Tests', () => {
         clientId: 'storm-data-collector',
         brokers: [brokers],
       },
-      batchSize: 3, // Batch size of 3
-      type: 'torn', // Using REPORT_TYPES from env vars
+      type: 'torn',
     });
 
     // Wait for all messages
@@ -473,7 +471,6 @@ describe('Kafka Integration Tests', () => {
         clientId: 'storm-data-collector',
         brokers: [brokers],
       },
-      batchSize: 500, // From env vars
       type: testType,
     });
 
@@ -582,7 +579,6 @@ describe('Kafka Integration Tests', () => {
       csvUrl: `${httpServerUrl}/torn.csv`,
       topic: testTopic,
       kafka: { clientId: 'storm-data-collector', brokers: [brokers] },
-      batchSize: 500,
       type: 'torn',
     });
 
@@ -595,7 +591,6 @@ describe('Kafka Integration Tests', () => {
       csvUrl: `${httpServerUrl}/hail.csv`,
       topic: testTopic,
       kafka: { clientId: 'storm-data-collector', brokers: [brokers] },
-      batchSize: 500,
       type: 'hail',
     });
 
@@ -608,7 +603,6 @@ describe('Kafka Integration Tests', () => {
       csvUrl: `${httpServerUrl}/wind.csv`,
       topic: testTopic,
       kafka: { clientId: 'storm-data-collector', brokers: [brokers] },
-      batchSize: 500,
       type: 'wind',
     });
 
