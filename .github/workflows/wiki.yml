@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'wiki/**'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -30,8 +30,8 @@ jobs:
 
       - name: Clone wiki repository
         run: |
-          git clone "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki_repo 2>&1 | grep -v 'x-access-token' || \
-          (mkdir -p wiki_repo && cd wiki_repo && git init -b master && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
+          git clone "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki 2>&1 | grep -v 'x-access-token' || \
+          (mkdir -p wiki && cd wiki && git init -b master && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
 
       - name: Sync wiki files
         run: |
@@ -40,7 +40,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Remove existing pages so deleted files don't persist
           find . -maxdepth 1 -name '*.md' -not -name '.git' -delete
-          cp ../wiki/*.md .
+          cp ../docs/*.md .
 
       - name: Commit and push wiki changes
         run: |
