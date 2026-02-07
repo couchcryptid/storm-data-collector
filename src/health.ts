@@ -1,9 +1,9 @@
-// src/health.ts
 import { createServer } from 'http';
+import logger from './logger.js';
 
 /**
  * Simple HTTP health check server for Docker health checks
- * Responds to GET / with 200 OK
+ * Responds to GET /health with 200 OK
  */
 export function startHealthServer(port = 3000) {
   const server = createServer((req, res) => {
@@ -23,7 +23,7 @@ export function startHealthServer(port = 3000) {
   });
 
   server.listen(port, () => {
-    console.log(`Health check server listening on port ${port}`);
+    logger.info({ port }, 'Health check server listening');
   });
 
   return server;

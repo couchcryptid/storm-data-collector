@@ -2,6 +2,7 @@ import { Cron } from 'croner';
 import { csvStreamToKafka } from '../csv/csvStream.js';
 import { config } from '../config.js';
 import { buildCsvUrl } from '../csv/utils.js';
+import logger from '../logger.js';
 
 /**
  * Delay execution for specified milliseconds
@@ -36,10 +37,9 @@ async function processCsvWithFallback(
   const url = buildCsvUrl(config.reportsBaseUrl, type, date);
 
   try {
-    console.log(
-      `[${new Date().toISOString()}] Attempting CSV: ${url} (attempt ${
-        currentAttempt + 1
-      }/${maxAttempts + 1})`
+    logger.info(
+      { url, attempt: currentAttempt + 1, maxAttempts: maxAttempts + 1 },
+      'Attempting CSV'
     );
 
     await csvStreamToKafka({
@@ -50,7 +50,7 @@ async function processCsvWithFallback(
       type,
     });
 
-    console.log(`[${new Date().toISOString()}] Completed CSV: ${type}`);
+    logger.info({ type }, 'Completed CSV');
     return true;
   } catch (err) {
     if (err instanceof Error && 'statusCode' in err) {
@@ -66,19 +66,24 @@ async function processCsvWithFallback(
           );
           const delayMinutes = Math.round(delayMs / 60000);
 
-          console.warn(
-            `[${new Date().toISOString()}] Server error ${statusCode} for ${url}. ` +
-              `Retrying in ${delayMinutes} minutes (attempt ${
-                currentAttempt + 1
-              }/${maxAttempts})...`
+          logger.warn(
+            {
+              url,
+              statusCode,
+              delayMinutes,
+              attempt: currentAttempt + 1,
+              maxAttempts,
+            },
+            'Server error, retrying with exponential backoff'
           );
 
           await delay(delayMs);
           retryAttempts.set(type, currentAttempt + 1);
           return await processCsvWithFallback(type, date, retryAttempts);
         } else {
-          console.error(
-            `[${new Date().toISOString()}] Max retry attempts (${maxAttempts}) reached for ${url}`
+          logger.error(
+            { url, maxAttempts, statusCode },
+            'Max retry attempts reached'
           );
           return false;
         }
@@ -86,42 +91,38 @@ async function processCsvWithFallback(
 
       // Log 404 - CSV not published yet
       if (statusCode === 404) {
-        console.warn(
-          `[${new Date().toISOString()}] CSV not found (404): ${url}. Skipping.`
-        );
+        logger.warn({ url }, 'CSV not found (404), skipping');
         return false;
       }
 
       // Log other client errors (400-499)
       if (statusCode >= 400 && statusCode < 500) {
-        console.error(
-          `[${new Date().toISOString()}] Client error ${statusCode} for ${url}: ${
-            httpError.message
-          }`
+        logger.error(
+          { url, statusCode, message: httpError.message },
+          'Client error'
         );
         return false;
       }
 
       // Other HTTP errors
-      console.error(
-        `[${new Date().toISOString()}] HTTP error ${statusCode} for ${url}: ${
-          httpError.message
-        }`
+      logger.error(
+        { url, statusCode, message: httpError.message },
+        'HTTP error'
       );
       return false;
     }
 
     // Network or other errors
-    console.error(
-      `[${new Date().toISOString()}] Failed to process ${url}:`,
-      err instanceof Error ? err.message : err
+    logger.error(
+      { url, error: err instanceof Error ? err.message : String(err) },
+      'Failed to process CSV'
     );
     return false;
   }
 }
 
 async function runJob() {
-  console.log(`[${new Date().toISOString()}] Starting CSV job...`);
+  logger.info('Starting CSV job');
 
   const date = new Date();
   const retryAttempts = new Map<string, number>();
@@ -143,9 +144,9 @@ async function runJob() {
       if (result.status === 'fulfilled') {
         results.push(result.value);
       } else {
-        console.error(
-          `[${new Date().toISOString()}] Unexpected error in batch processing:`,
-          result.reason
+        logger.error(
+          { error: result.reason },
+          'Unexpected error in batch processing'
         );
       }
     });
@@ -154,21 +155,19 @@ async function runJob() {
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
 
-  console.log(
-    `[${new Date().toISOString()}] CSV job finished. ` +
-      `Successful: ${successful}, Failed: ${failed}`
+  logger.info(
+    { successful, failed, total: results.length },
+    'CSV job finished'
   );
 }
 
 export function startScheduler() {
   // Run immediately on startup
-  console.log(
-    `[${new Date().toISOString()}] Running initial job immediately...`
-  );
+  logger.info('Running initial job immediately');
   runJob().catch((err) => {
-    console.error(
-      `[${new Date().toISOString()}] Initial job failed:`,
-      err instanceof Error ? err.message : err
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err) },
+      'Initial job failed'
     );
   });
 
@@ -177,7 +176,5 @@ export function startScheduler() {
     await runJob();
   });
 
-  console.log(
-    `[${new Date().toISOString()}] Scheduler started with pattern: ${config.cron.schedule}`
-  );
+  logger.info({ pattern: config.cron.schedule }, 'Scheduler started');
 }

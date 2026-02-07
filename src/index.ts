@@ -1,26 +1,44 @@
 import { startScheduler } from './scheduler/scheduler.js';
 import { startHealthServer } from './health.js';
 import { config } from './config.js';
+import logger, {
+  printHeader,
+  printConfig,
+  printDivider,
+  printStartupSuccess,
+} from './logger.js';
 
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10000;
 
-console.log('Starting CSV Cron job with the following configuration:');
-console.log(`CSV Base URL: ${config.reportsBaseUrl}`);
-console.log(`CSV Types: ${config.reportTypes.join(', ')}`);
-console.log(`Kafka Topic: ${config.topic}`);
-console.log(`Kafka Client ID: ${config.kafka.clientId}`);
-console.log(`Kafka Brokers: ${config.kafka.brokers.join(',')}`);
-console.log(`Batch Size: ${config.batchSize}`);
-console.log(`Max Concurrent CSV: ${config.maxConcurrentCsv}`);
-console.log(`Cron Schedule: ${config.cron.schedule}`);
-console.log(
-  `Retry Config: ${config.cron.fallbackIntervalMin}min base interval, ${config.cron.maxFallbackAttempts} max attempts`
+printHeader('🌩️  CSV Weather Report Cron Scheduler');
+
+printConfig('CSV Base URL', config.reportsBaseUrl);
+printConfig('CSV Types', config.reportTypes.join(', '));
+printConfig('Kafka Topic', config.topic);
+printConfig('Kafka Client ID', config.kafka.clientId);
+printConfig('Kafka Brokers', config.kafka.brokers.join(', '));
+
+printDivider();
+
+printConfig('Batch Size', String(config.batchSize));
+printConfig('Max Concurrent', String(config.maxConcurrentCsv));
+printConfig('Cron Schedule', config.cron.schedule);
+printConfig(
+  'Retry Strategy',
+  `${config.cron.fallbackIntervalMin}min exponential backoff, ${config.cron.maxFallbackAttempts} max attempts`
 );
-console.log(`DLQ: ${config.dlq.enabled ? 'Enabled' : 'Disabled'}`);
+
+printDivider();
+
+printConfig('DLQ Support', config.dlq.enabled);
 if (config.dlq.enabled) {
-  console.log(`DLQ Topic: ${config.dlq.topic}`);
-  console.log(`DLQ File Fallback: ${config.dlq.fileFallback.directory}`);
+  printConfig('DLQ Topic', config.dlq.topic);
+  printConfig('DLQ File Fallback', config.dlq.fileFallback.directory);
 }
+
+printDivider();
+
+logger.info('Starting CSV Cron scheduler...');
 
 // Start health check server (for Docker health checks)
 const healthServer = startHealthServer(3000);
@@ -28,23 +46,21 @@ const healthServer = startHealthServer(3000);
 // Start cron scheduler
 startScheduler();
 
-console.log('CSV Cron Running...');
+printStartupSuccess('CSV Weather Report Cron Scheduler is running');
 
 // Graceful shutdown handling
 const shutdown = (signal: string) => {
-  console.log(
-    `\n[${new Date().toISOString()}] Received ${signal}, shutting down gracefully...`
-  );
+  logger.info({ signal }, 'Received signal, shutting down gracefully...');
 
   // Close health server
   healthServer.close(() => {
-    console.log('Health server closed');
+    logger.info('Health server closed');
     process.exit(0);
   });
 
   // Force exit after timeout if graceful shutdown fails
   setTimeout(() => {
-    console.error('Forced shutdown after timeout');
+    logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
 };
