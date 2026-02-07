@@ -35,7 +35,7 @@ jobs:
 
       - name: Sync wiki files
         run: |
-          cd wiki_repo
+          cd wiki
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Remove existing pages so deleted files don't persist
@@ -44,7 +44,7 @@ jobs:
 
       - name: Commit and push wiki changes
         run: |
-          cd wiki_repo
+          cd wiki
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "docs: sync wiki from repository"
