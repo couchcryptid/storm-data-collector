@@ -1,10 +1,10 @@
 services:
-  csv-etl:
+  storm-data-collector:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: csv-etl
+    container_name: storm-data-collector
     env_file: .env
     volumes:
       - .:/app

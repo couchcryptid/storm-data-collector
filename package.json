@@ -1,15 +1,15 @@
 {
-  "name": "ht-weather-data-collector",
+  "name": "storm-data-collector",
   "version": "1.0.0",
   "description": "",
   "private": true,
-  "homepage": "https://github.com/couchcryptid/ht-weather-data-collector#readme",
+  "homepage": "https://github.com/couchcryptid/storm-data-collector#readme",
   "bugs": {
-    "url": "https://github.com/couchcryptid/ht-weather-data-collector/issues"
+    "url": "https://github.com/couchcryptid/storm-data-collector/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/couchcryptid/ht-weather-data-collector.git"
+    "url": "git+https://github.com/couchcryptid/storm-data-collector.git"
   },
   "license": "ISC",
   "author": "couchcryptid",

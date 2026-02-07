@@ -17,7 +17,7 @@ See [src/config.ts](src/config.ts) for the validation schema.
 ### Validation Rules
 
 - `KAFKA_BROKERS` - String (default: "localhost:9092")
-- `KAFKA_CLIENT_ID` - String (default: "ht-weather-collector")
+- `KAFKA_CLIENT_ID` - String (default: "storm-data-collector")
 - `KAFKA_TOPIC` - String (default: "raw-weather-reports")
 - `CSV_BASE_URL` - Valid URL (default: "https://example.com/")
 - `BATCH_SIZE` - Positive number (default: 500)
@@ -255,7 +255,7 @@ $ git commit -m "Add new feature"
 ✔ Applying modifications from tasks...
 ✔ Cleaning up temporary files...
 
-> ht-weather-data-collector@1.0.0 test
+> storm-data-collector@1.0.0 test
 > vitest run
 
 ✓ src/csv/csvStream.test.ts (4 tests) 5ms

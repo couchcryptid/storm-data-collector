@@ -49,10 +49,10 @@ npm run build
 docker compose up
 
 # Build for production
-docker build -t ht-weather-data-collector .
+docker build -t storm-data-collector .
 
 # Build with buildx (multi-platform support)
-docker buildx build -t ht-weather-data-collector .
+docker buildx build -t storm-data-collector .
 ```
 
 ## Environment Variables
@@ -67,7 +67,7 @@ NODE_ENV=development
 # For Docker: Use kafka:29092 (internal network)
 # For local: Use localhost:9092
 KAFKA_BROKERS=kafka:29092
-KAFKA_CLIENT_ID=ht-weather-collector
+KAFKA_CLIENT_ID=storm-collector
 KAFKA_TOPIC=raw-weather-reports
 
 # CSV Data Source
