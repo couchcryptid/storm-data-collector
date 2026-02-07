@@ -4,7 +4,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintPrettierRecommended from 'eslint-plugin-prettier/recommended';
 
-export default tseslint.config(
+export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   eslintPrettierRecommended,
@@ -21,5 +21,5 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },
-  }
-);
+  },
+];
