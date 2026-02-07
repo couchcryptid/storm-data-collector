@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'wiki/**'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,44 +15,41 @@ jobs:
   publish-wiki:
     name: Publish Wiki to GitHub
     runs-on: ubuntu-latest
+    env:
+      WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
     steps:
+      - name: Validate token
+        run: |
+          if [ -z "$WIKI_TOKEN" ]; then
+            echo "::error::WIKI_TOKEN secret is required. GITHUB_TOKEN cannot push to wiki repos."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Clone wiki repository
-        env:
-          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
         run: |
-          # Prefer a user-provided PAT (WIKI_TOKEN). Fallback to GITHUB_TOKEN if not provided.
-          TOKEN="$WIKI_TOKEN"
-          if [ -z "$TOKEN" ]; then
-            TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          fi
-          git clone "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki_repo || \
-          (mkdir -p wiki_repo && cd wiki_repo && git init && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
+          git clone "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki_repo 2>&1 | grep -v 'x-access-token' || \
+          (mkdir -p wiki_repo && cd wiki_repo && git init -b master && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
 
       - name: Sync wiki files
         run: |
-          cp wiki/*.md wiki_repo/ || echo "No wiki files to copy"
           cd wiki_repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Remove existing pages so deleted files don't persist
+          find . -maxdepth 1 -name '*.md' -not -name '.git' -delete
+          cp ../wiki/*.md .
 
       - name: Commit and push wiki changes
-        env:
-          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
         run: |
-          # Use same TOKEN logic as clone step
-          TOKEN="$WIKI_TOKEN"
-          if [ -z "$TOKEN" ]; then
-            TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          fi
           cd wiki_repo
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "docs: sync wiki from repository"
             git remote remove origin 2>/dev/null || true
-            git remote add origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.wiki.git"
-            BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "main")
-            git push -u origin HEAD:refs/heads/${BRANCH}
+            git remote add origin "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git"
+            BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
+            git push -u origin "HEAD:refs/heads/${BRANCH}" 2>&1 | grep -v 'x-access-token'
           fi

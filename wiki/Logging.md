@@ -25,7 +25,7 @@ logger.debug('Debug information', { userId: 123 });
 | **info**  | 30      | General informational messages (default) |
 | **debug** | 10      | Detailed debugging information           |
 
-Control verbosity via `LOG_LEVEL`:
+Control verbosity via `LOG_LEVEL` (see [[Configuration]]):
 
 ```bash
 LOG_LEVEL=debug npm run dev   # Development - see everything
