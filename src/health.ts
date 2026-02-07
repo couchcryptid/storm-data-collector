@@ -2,8 +2,18 @@ import { createServer } from 'http';
 import logger from './logger.js';
 
 /**
- * Simple HTTP health check server for Docker health checks
- * Responds to GET /health with 200 OK
+ * Start HTTP health check server for Docker/Kubernetes probes
+ *
+ * Responds to GET /health with 200 OK and JSON status. Used for:
+ * - Docker health checks (HEALTHCHECK instruction)
+ * - Kubernetes liveness probes
+ * - Load balancer health verification
+ *
+ * @param port - Port to listen on (default: 3000)
+ * @returns HTTP server instance (call .close() to stop)
+ * @example
+ * const server = startHealthServer(3000);
+ * // Server now responds to: curl http://localhost:3000/health
  */
 export function startHealthServer(port = 3000) {
   const server = createServer((req, res) => {

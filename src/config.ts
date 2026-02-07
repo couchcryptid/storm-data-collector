@@ -43,7 +43,7 @@ const env = envSchema.parse({
 export const config = {
   kafka: {
     clientId: env.KAFKA_CLIENT_ID,
-    brokers: env.KAFKA_BROKERS.split(',').map((b) => b.trim()),
+    brokers: env.KAFKA_BROKERS.split(',').map((broker) => broker.trim()),
   },
   topic: env.KAFKA_TOPIC,
   reportsBaseUrl: env.REPORTS_BASE_URL,
@@ -54,7 +54,7 @@ export const config = {
     fallbackIntervalMin: env.CRON_FALLBACK_INTERVAL_MIN,
     maxFallbackAttempts: env.CRON_MAX_FALLBACK_ATTEMPTS,
   },
-  reportTypes: env.REPORT_TYPES.split(',').map((t) => t.trim()),
+  reportTypes: env.REPORT_TYPES.split(',').map((type) => type.trim()),
   dlq: {
     enabled: env.DLQ_ENABLED,
     topic: env.KAFKA_DLQ_TOPIC,

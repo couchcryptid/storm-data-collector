@@ -4,7 +4,16 @@ import { CsvToKafkaOptions } from '../types/index.js';
 import { getKafkaProducer } from '../kafka/client.js';
 import { publishBatch } from '../kafka/publisher.js';
 import logger from '../logger.js';
+import { getErrorMessage } from '../shared/errors.js';
+import { DATA_PROCESSING } from '../shared/constants.js';
 
+/**
+ * Custom error for HTTP-specific failures
+ * Includes status code for retry logic decisions
+ *
+ * @example
+ * throw new HttpError('CSV not found', 404);
+ */
 export class HttpError extends Error {
   constructor(
     message: string,
@@ -24,113 +33,144 @@ export interface CsvStreamResult {
   batchFailures: number;
 }
 
+/**
+ * Publish a single CSV batch and update result statistics
+ *
+ * Attempts to publish batch to Kafka. If unsuccessful, updates DLQ counters.
+ * Never throws; errors are captured and logged.
+ *
+ * @param batch - Array of CSV records to publish
+ * @param result - Statistics object to update
+ * @param options.producer - Kafka producer instance
+ * @param options.topic - Kafka topic name
+ * @param options.csvUrl - Source CSV URL for logging
+ * @param options.weatherType - Weather type for metadata
+ * @returns true if batch published successfully, false if sent to DLQ
+ * @internal
+ */
+async function publishCsvBatch(
+  batch: Record<string, string>[],
+  result: CsvStreamResult,
+  options: {
+    producer: ReturnType<typeof getKafkaProducer>;
+    topic: string;
+    csvUrl: string;
+    weatherType?: string;
+  }
+): Promise<boolean> {
+  if (batch.length === 0) {
+    return true;
+  }
+
+  try {
+    const publishResult = await publishBatch({
+      producer: options.producer,
+      topic: options.topic,
+      batch,
+      csvUrl: options.csvUrl,
+      weatherType: options.weatherType,
+    });
+
+    if (publishResult.successful) {
+      result.publishedRows += publishResult.publishedCount;
+      return true;
+    } else {
+      result.batchFailures++;
+      result.dlqRows += batch.length;
+      return false;
+    }
+  } catch (err) {
+    // Should not happen (publishBatch catches errors), but defensive
+    logger.error(
+      {
+        error: getErrorMessage(err),
+        csvUrl: options.csvUrl,
+      },
+      'Unexpected error in batch publishing'
+    );
+    result.batchFailures++;
+    return false;
+  }
+}
+
+/**
+ * CSV parsing and streaming to Kafka with batch publishing
+ *
+ * Fetches CSV from URL, parses line-by-line, batches rows, and publishes to Kafka.
+ * Adds `type` field to each record. Automatically handles DLQ fallback for failed batches.
+ *
+ * @param csvUrl - URL of CSV file to fetch
+ * @param topic - Kafka topic to publish to
+ * @param kafka - Kafka client configuration
+ * @param batchSize - Number of rows per batch (default: 500)
+ * @param type - Weather type: 'hail', 'wind', or 'torn'
+ * @returns Result with statistics: total rows, published, DLQ'd, and failures
+ * @throws HttpError if fetch fails or returns non-200 status
+ * @throws Error if response has no body
+ */
 export async function csvStreamToKafka({
   csvUrl,
   topic,
   kafka,
-  batchSize = 500,
+  batchSize = DATA_PROCESSING.DEFAULT_BATCH_SIZE,
   type,
 }: CsvToKafkaOptions): Promise<CsvStreamResult> {
   const producer = getKafkaProducer(kafka);
   await producer.connect();
 
-  const res = await fetch(csvUrl);
-  if (!res.ok)
+  const response = await fetch(csvUrl);
+  if (!response.ok)
     throw new HttpError(
-      `Failed to fetch CSV: ${csvUrl} (status ${res.status})`,
-      res.status
+      `Failed to fetch CSV: ${csvUrl} (status ${response.status})`,
+      response.status
     );
-  if (!res.body) throw new Error(`No response body for CSV: ${csvUrl}`);
+  if (!response.body) throw new Error(`No response body for CSV: ${csvUrl}`);
 
-  const readable = Readable.fromWeb(res.body as ReadableStream<Uint8Array>);
-  const rows: Record<string, string>[] = [];
+  const readable = Readable.fromWeb(
+    response.body as ReadableStream<Uint8Array>
+  );
+  const csvRows: Record<string, string>[] = [];
 
-  // Track results
-  let totalRows = 0;
-  let publishedRows = 0;
-  let dlqRows = 0;
-  let batchFailures = 0;
+  const result: CsvStreamResult = {
+    totalRows: 0,
+    publishedRows: 0,
+    dlqRows: 0,
+    batchFailures: 0,
+  };
+
+  const publishOptions = {
+    producer,
+    topic,
+    csvUrl,
+    weatherType: type,
+  };
 
   await new Promise<void>((resolve, reject) => {
     readable
       .pipe(csvParser())
       .on('data', async (row) => {
-        totalRows++;
-        rows.push({ ...row, type });
+        result.totalRows++;
+        csvRows.push({ ...row, type });
 
-        if (rows.length >= batchSize) {
-          const batch = rows.splice(0, batchSize);
-
-          // Publish batch with DLQ support (don't reject on failure)
-          try {
-            const result = await publishBatch({
-              producer,
-              topic,
-              batch,
-              csvUrl,
-              weatherType: type,
-            });
-
-            if (result.successful) {
-              publishedRows += result.publishedCount;
-            } else {
-              batchFailures++;
-              dlqRows += batch.length; // Entire batch sent to DLQ
-            }
-          } catch (err) {
-            // Should not happen (publishBatch catches errors), but defensive
-            logger.error(
-              {
-                error: err instanceof Error ? err.message : String(err),
-                csvUrl,
-              },
-              'Unexpected error in publishBatch'
-            );
-            batchFailures++;
-          }
+        if (csvRows.length >= batchSize) {
+          const batch = csvRows.splice(0, batchSize);
+          await publishCsvBatch(batch, result, publishOptions);
         }
       })
       .on('end', async () => {
         // Process remaining rows
-        if (rows.length > 0) {
-          try {
-            const result = await publishBatch({
-              producer,
-              topic,
-              batch: rows,
-              csvUrl,
-              weatherType: type,
-            });
-
-            if (result.successful) {
-              publishedRows += result.publishedCount;
-            } else {
-              batchFailures++;
-              dlqRows += rows.length;
-            }
-          } catch (err) {
-            logger.error(
-              {
-                error: err instanceof Error ? err.message : String(err),
-                csvUrl,
-              },
-              'Unexpected error in final batch'
-            );
-            batchFailures++;
-          }
+        if (csvRows.length > 0) {
+          await publishCsvBatch(csvRows, result, publishOptions);
         }
 
         await producer.disconnect();
 
-        logger.info(
-          { csvUrl, totalRows, publishedRows, dlqRows, batchFailures },
-          'CSV processing complete'
-        );
+        logger.info({ csvUrl, ...result }, 'CSV processing complete');
 
         resolve();
       })
       .on('error', (err) => reject(err));
   });
 
-  return { totalRows, publishedRows, dlqRows, batchFailures };
+  return result;
 }

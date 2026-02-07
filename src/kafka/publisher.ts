@@ -1,6 +1,6 @@
 import { Producer } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
-import { createDlqMessage, publishToDlq } from './dlqPublisher.js';
+import { createDLQMessage, publishToDLQ } from './dlqPublisher.js';
 import logger from '../logger.js';
 
 export interface PublishBatchOptions {
@@ -19,8 +19,20 @@ export interface PublishBatchResult {
 }
 
 /**
- * Publish batch to Kafka with DLQ support
- * Returns result indicating success/failure and DLQ usage
+ * Publish a batch of records to Kafka with automatic DLQ fallback on failure
+ *
+ * On success, messages are published to the main topic. On failure, they are
+ * automatically sent to the DLQ topic with rich error metadata for debugging.
+ * If DLQ publishing also fails, messages are written to a local file fallback.
+ *
+ * @param options - Configuration for batch publishing
+ * @param options.producer - Connected Kafka producer instance
+ * @param options.topic - Main topic to publish to
+ * @param options.batch - Array of records to publish
+ * @param options.csvUrl - Source CSV URL (included in DLQ metadata)
+ * @param options.weatherType - Weather type: 'hail', 'wind', or 'torn' (included in DLQ metadata)
+ * @returns Result object with success status and message counts
+ * @throws Never throws; all errors are handled with DLQ fallback
  */
 export async function publishBatch({
   producer,
@@ -56,7 +68,7 @@ export async function publishBatch({
 
     // Send entire batch to DLQ (KafkaJS batches are all-or-nothing)
     const dlqMessages = batch.map((record) =>
-      createDlqMessage(record, err, {
+      createDLQMessage(record, err, {
         originalTopic: topic,
         csvUrl,
         weatherType,
@@ -65,7 +77,7 @@ export async function publishBatch({
       })
     );
 
-    const dlqCount = await publishToDlq(producer, dlqMessages);
+    const dlqCount = await publishToDLQ(producer, dlqMessages);
 
     return {
       successful: false,

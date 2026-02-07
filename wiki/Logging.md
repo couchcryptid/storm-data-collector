@@ -17,13 +17,13 @@ logger.debug('Debug information', { userId: 123 });
 
 ## Log Levels
 
-| Level | Numeric | Usage |
-| --- | --- | --- |
-| **fatal** | 60 | Unrecoverable errors, app must exit |
-| **error** | 50 | Error conditions, operation failed |
-| **warn** | 40 | Warning conditions, something unexpected |
-| **info** | 30 | General informational messages (default) |
-| **debug** | 10 | Detailed debugging information |
+| Level     | Numeric | Usage                                    |
+| --------- | ------- | ---------------------------------------- |
+| **fatal** | 60      | Unrecoverable errors, app must exit      |
+| **error** | 50      | Error conditions, operation failed       |
+| **warn**  | 40      | Warning conditions, something unexpected |
+| **info**  | 30      | General informational messages (default) |
+| **debug** | 10      | Detailed debugging information           |
 
 Control verbosity via `LOG_LEVEL`:
 
@@ -52,14 +52,15 @@ logger.info(`Fetching CSV from ${csvUrl}`);
 ### Error Logging
 
 ```typescript
+import { getErrorMessage } from './shared/errors';
+
 try {
   await fetchCsv(url);
 } catch (error) {
   logger.error('CSV fetch failed', {
     url,
     type: 'hail',
-    error: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
+    error: getErrorMessage(error),
   });
 }
 ```
@@ -69,7 +70,14 @@ try {
 For startup messages and configuration display:
 
 ```typescript
-import { styled, printHeader, printConfig, printDivider, printStartupSuccess, printStartupError } from './logger';
+import {
+  styled,
+  printHeader,
+  printConfig,
+  printDivider,
+  printStartupSuccess,
+  printStartupError,
+} from './logger';
 
 printHeader('Application Configuration');
 printConfig('Kafka Brokers', 'localhost:9092');
@@ -80,17 +88,17 @@ printStartupSuccess('Application started successfully');
 
 ### Available Styles
 
-| Function | Color |
-| --- | --- |
-| `styled.success()` | Green |
-| `styled.error()` | Red |
-| `styled.warning()` | Yellow |
-| `styled.info()` | Blue |
-| `styled.highlight()` | Cyan |
-| `styled.bold()` | Bold |
-| `styled.dim()` | Dim/Gray |
+| Function                | Color      |
+| ----------------------- | ---------- |
+| `styled.success()`      | Green      |
+| `styled.error()`        | Red        |
+| `styled.warning()`      | Yellow     |
+| `styled.info()`         | Blue       |
+| `styled.highlight()`    | Cyan       |
+| `styled.bold()`         | Bold       |
+| `styled.dim()`          | Dim/Gray   |
 | `styled.success_bold()` | Bold Green |
-| `styled.error_bold()` | Bold Red |
+| `styled.error_bold()`   | Bold Red   |
 
 ## Output Format
 
@@ -148,7 +156,11 @@ logger.debug('Processing record', { recordId, index: 42 });
 
 ```typescript
 // Good
-logger.info('CSV parsing started', { filename: 'hail_reports.csv', rowCount: 1500, batchSize: 500 });
+logger.info('CSV parsing started', {
+  filename: 'hail_reports.csv',
+  rowCount: 1500,
+  batchSize: 500,
+});
 
 // Bad
 logger.info('Starting parse');
@@ -161,7 +173,10 @@ export async function processFile(filename: string) {
   logger.info('File processing started', { filename });
   try {
     const result = await parse(filename);
-    logger.info('File processing completed', { filename, recordsProcessed: result.length });
+    logger.info('File processing completed', {
+      filename,
+      recordsProcessed: result.length,
+    });
     return result;
   } catch (error) {
     logger.error('File processing failed', {
@@ -188,20 +203,39 @@ logger.info('DB connected', { host: 'postgres.example.com' });
 ### Batch Processing
 
 ```typescript
-logger.info('Batch processing started', { batchId: uuidv4(), totalRecords: 5000, batchSize: 500 });
+logger.info('Batch processing started', {
+  batchId: uuidv4(),
+  totalRecords: 5000,
+  batchSize: 500,
+});
 
 for (let i = 0; i < batches.length; i++) {
-  logger.debug('Processing batch', { batchNumber: i + 1, totalBatches: batches.length });
+  logger.debug('Processing batch', {
+    batchNumber: i + 1,
+    totalBatches: batches.length,
+  });
 }
 
-logger.info('Batch processing completed', { batchId, totalBatches: batches.length, duration: endTime - startTime });
+logger.info('Batch processing completed', {
+  batchId,
+  totalBatches: batches.length,
+  duration: endTime - startTime,
+});
 ```
 
 ### Retry Logic
 
 ```typescript
-logger.warn('Publish failed, retrying', { attempt: 1, maxAttempts: 3, nextRetryIn: 5000, error: err.message });
-logger.info('Publish succeeded after retry', { attempts: 2, totalDuration: 5500 });
+logger.warn('Publish failed, retrying', {
+  attempt: 1,
+  maxAttempts: 3,
+  nextRetryIn: 5000,
+  error: err.message,
+});
+logger.info('Publish succeeded after retry', {
+  attempts: 2,
+  totalDuration: 5500,
+});
 ```
 
 ## Production Considerations
@@ -214,20 +248,20 @@ node dist/index.js 2>&1 | my-log-aggregator
 
 ### Environment-Specific Levels
 
-| Environment | Level | Command |
-| --- | --- | --- |
-| Production | `warn` | `LOG_LEVEL=warn node dist/index.js` |
-| Staging | `info` | `LOG_LEVEL=info node dist/index.js` |
-| Development | `debug` | `LOG_LEVEL=debug npm run dev` |
+| Environment | Level   | Command                             |
+| ----------- | ------- | ----------------------------------- |
+| Production  | `warn`  | `LOG_LEVEL=warn node dist/index.js` |
+| Staging     | `info`  | `LOG_LEVEL=info node dist/index.js` |
+| Development | `debug` | `LOG_LEVEL=debug npm run dev`       |
 
 ### Monitoring Alerts
 
-| Level | Alert Policy |
-| --- | --- |
-| **FATAL** | Immediate alert |
-| **ERROR** | Alert within 5 minutes |
-| **WARN** | Track trends, alert on spikes |
-| **INFO** | General metrics |
+| Level     | Alert Policy                  |
+| --------- | ----------------------------- |
+| **FATAL** | Immediate alert               |
+| **ERROR** | Alert within 5 minutes        |
+| **WARN**  | Track trends, alert on spikes |
+| **INFO**  | General metrics               |
 
 ### Log Rotation (bare metal)
 
@@ -242,8 +276,8 @@ node dist/index.js 2>&1 | my-log-aggregator
 
 ## Troubleshooting
 
-| Issue | Solution |
-| --- | --- |
-| Logs not appearing | Check `LOG_LEVEL` env var; ensure messages are at or above configured level |
-| Too much output | Set `LOG_LEVEL=info` or higher |
-| JSON vs pretty | Pretty format is automatic in dev; JSON in production without pino-pretty transport |
+| Issue              | Solution                                                                            |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Logs not appearing | Check `LOG_LEVEL` env var; ensure messages are at or above configured level         |
+| Too much output    | Set `LOG_LEVEL=info` or higher                                                      |
+| JSON vs pretty     | Pretty format is automatic in dev; JSON in production without pino-pretty transport |

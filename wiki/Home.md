@@ -63,10 +63,14 @@ src/
 ├── scheduler/
 │   ├── scheduler.ts      # Job scheduling with exponential backoff
 │   └── scheduler.test.ts # Scheduler tests
+├── shared/
+│   ├── constants.ts      # HTTP status codes and timing constants
+│   └── errors.ts         # Error utility functions and type guards
 ├── types/
 │   └── index.d.ts        # TypeScript type definitions
 ├── config.ts             # Configuration management with Zod validation
 ├── health.ts             # Health check endpoint for Docker
+├── logger.ts             # Pino logging with Chalk styling
 └── index.ts              # Application entry point
 ```
 

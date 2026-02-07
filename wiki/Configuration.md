@@ -45,17 +45,23 @@ LOG_LEVEL=info  # fatal, error, warn, info, debug
 
 The schema is defined in `src/config.ts`:
 
-| Variable | Type | Default | Constraints |
-| --- | --- | --- | --- |
-| `KAFKA_BROKERS` | String | `localhost:9092` | |
-| `KAFKA_CLIENT_ID` | String | `storm-data-collector` | |
-| `KAFKA_TOPIC` | String | `raw-weather-reports` | |
-| `REPORTS_BASE_URL` | URL | `https://example.com/` | Must be valid URL |
-| `BATCH_SIZE` | Number | `500` | Positive |
-| `MAX_CONCURRENT_CSV` | Number | `3` | Positive, max 10 |
-| `CRON_SCHEDULE` | String | `0 0 * * *` | |
-| `CRON_FALLBACK_INTERVAL_MIN` | Number | `6` | Positive, max 48 |
-| `REPORT_TYPES` | String | `torn,hail,wind` | Comma-separated |
+| Variable                     | Type    | Default                   | Constraints       |
+| ---------------------------- | ------- | ------------------------- | ----------------- |
+| `KAFKA_BROKERS`              | String  | `localhost:9092`          |                   |
+| `KAFKA_CLIENT_ID`            | String  | `csv-producer`            |                   |
+| `KAFKA_TOPIC`                | String  | `raw-weather-reports`     |                   |
+| `REPORTS_BASE_URL`           | URL     | `https://example.com/`    | Must be valid URL |
+| `BATCH_SIZE`                 | Number  | `500`                     | Positive          |
+| `MAX_CONCURRENT_CSV`         | Number  | `3`                       | Positive, max 10  |
+| `CRON_SCHEDULE`              | String  | `0 0 * * *`               |                   |
+| `CRON_FALLBACK_INTERVAL_MIN` | Number  | `30`                      | Positive, max 120 |
+| `CRON_MAX_FALLBACK_ATTEMPTS` | Number  | `3`                       | Positive, max 5   |
+| `REPORT_TYPES`               | String  | `torn,hail,wind`          | Comma-separated   |
+| `KAFKA_DLQ_TOPIC`            | String  | `raw-weather-reports-dlq` |                   |
+| `DLQ_ENABLED`                | Boolean | `true`                    |                   |
+| `DLQ_FILE_FALLBACK_DIR`      | String  | `./data/dlq`              |                   |
+| `DLQ_FILE_MAX_SIZE_MB`       | Number  | `10`                      | Positive          |
+| `DLQ_INCLUDE_STACK_TRACES`   | Boolean | `true`                    |                   |
 
 ## Validation Errors
 
