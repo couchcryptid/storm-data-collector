@@ -23,15 +23,15 @@
 
 ### Commands
 
-| Command | Description |
-| --- | --- |
-| `npm test` | Run all tests |
-| `npm run test:unit` | Unit tests only (fast) |
-| `npm run test:integration` | Integration tests (requires Docker) |
-| `npm run test:coverage:unit` | Coverage report (unit tests) |
-| `npm run test:coverage` | Coverage report (all tests) |
-| `npm run test:watch` | Watch mode |
-| `npm run test:ui` | Visual browser UI |
+| Command                      | Description                         |
+| ---------------------------- | ----------------------------------- |
+| `npm test`                   | Run all tests                       |
+| `npm run test:unit`          | Unit tests only (fast)              |
+| `npm run test:integration`   | Integration tests (requires Docker) |
+| `npm run test:coverage:unit` | Coverage report (unit tests)        |
+| `npm run test:coverage`      | Coverage report (all tests)         |
+| `npm run test:watch`         | Watch mode                          |
+| `npm run test:ui`            | Visual browser UI                   |
 
 ### Coverage
 
@@ -52,27 +52,21 @@ The integration tests verify the full CSV-to-Kafka pipeline:
 
 1. **Kafka Container Setup** - Spins up real Kafka using Testcontainers
 2. **HTTP Mock Server** - Serves test CSV data
-3. **End-to-End Flow** - Tests CSV fetch → parse → batch → publish → consume
+3. **End-to-End Flow** - Tests CSV fetch → parse → batch → publish
 4. **Verification** - Consumes messages from Kafka to verify correct publishing
 
 **Example:**
 
 ```typescript
 it('publishes CSV data to Kafka and can be consumed', async () => {
-  testCsvContent = `id,name,value
-1,item-1,100
-2,item-2,200`;
-
-  await csvStreamToKafka({
+  const result = await csvStreamToKafka({
     csvUrl: `${httpServerUrl}/test.csv`,
     topic: testTopic,
     kafka: { clientId: 'test', brokers: [kafkaBrokers] },
-    batchSize: 2,
     type: 'test',
   });
 
-  expect(consumedMessages).toHaveLength(2);
-  expect(messages[0]).toMatchObject({ id: '1', name: 'item-1', value: '100' });
+  expect(result.publishedRows).toBe(2);
 });
 ```
 
@@ -110,55 +104,10 @@ Located in `.husky/pre-commit`, the hook runs automatically on every commit:
 4. If all checks pass, commit succeeds
 5. If any check fails, commit is blocked
 
-### Bypassing (not recommended)
+### Best Practices
 
-```bash
-git commit --no-verify
-```
-
----
-
-## Best Practices
-
-1. **Always Use Valid Environment Variables** - See [[Configuration]] for required format
-2. **Monitor Test Coverage** - Run `npm run test:coverage` before PRs
-3. **Trust the Git Hooks** - Let them auto-format and auto-fix code
-4. **Use Test UI for Debugging** - Run `npm run test:ui` for visual debugging
-5. **Run Integration Tests Before PRs** - `npm run test:integration`
-
----
-
-## Troubleshooting
-
-### "ZodError: Invalid URL"
-
-Check `REPORTS_BASE_URL` in `.env` file. Must be a valid URL format.
-
-### "husky - pre-commit script failed"
-
-- Tests failing: run `npm test` to see why
-- Linting errors: run `npm run lint:fix`
-- Formatting issues: run `npm run format`
-
-### Coverage percentage dropped
-
-New code added without tests. Run `npm run test:coverage` to see uncovered lines.
-
-### Integration tests failing
-
-- Ensure Docker is running
-- Check Docker has enough resources (2GB+ memory recommended)
-- Container startup can take 60-90 seconds
-
----
-
-## Summary
-
-| Tool | Purpose | Command |
-| --- | --- | --- |
-| **Unit Tests** | Fast isolated tests | `npm run test:unit` |
-| **Integration Tests** | Full Kafka e2e tests | `npm run test:integration` |
-| **Coverage** | Test coverage report | `npm run test:coverage` |
-| **Test UI** | Visual test interface | `npm run test:ui` |
-| **Husky** | Git hooks | Automatic on commit |
-| **Lint-Staged** | Stage-only formatting | Automatic with Husky |
+1. **Run tests frequently** - Use `npm run test:watch` during development
+2. **Monitor test coverage** - Run `npm run test:coverage` before PRs
+3. **Trust the git hooks** - Let them auto-format and auto-fix code
+4. **Use test UI for debugging** - Run `npm run test:ui` for visual debugging
+5. **Run integration tests before PRs** - `npm run test:integration`

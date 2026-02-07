@@ -53,16 +53,15 @@ docker buildx build -t storm-data-collector .  # Multi-platform
 ```
 src/
 ├── csv/
-│   ├── csvStream.ts      # CSV parsing and streaming with DLQ support
+│   ├── csvStream.ts      # CSV parsing and streaming
 │   ├── utils.ts          # CSV URL building utilities
 │   └── csvStream.test.ts # CSV streaming tests
 ├── kafka/
 │   ├── client.ts         # Kafka producer singleton
-│   ├── publisher.ts      # Batch publishing with DLQ support
-│   ├── dlqPublisher.ts   # Dead Letter Queue publishing and file fallback
+│   ├── publisher.ts      # Batch publishing
 │   └── kafka.integration.test.ts
 ├── scheduler/
-│   ├── scheduler.ts      # Job scheduling with exponential backoff
+│   ├── scheduler.ts      # Job scheduling with fixed interval retry
 │   └── scheduler.test.ts # Scheduler tests
 ├── shared/
 │   ├── constants.ts      # HTTP status codes and timing constants
@@ -71,7 +70,7 @@ src/
 │   └── index.d.ts        # TypeScript type definitions
 ├── config.ts             # Configuration management with Zod validation
 ├── health.ts             # Health check endpoint for Docker
-├── logger.ts             # Pino logging with Chalk styling
+├── logger.ts             # Pino logging
 └── index.ts              # Application entry point
 ```
 
@@ -86,4 +85,3 @@ src/
 - ESLint + Prettier (code quality)
 - Zod (configuration validation)
 - Pino (logging)
-- UUID (batch tracking)

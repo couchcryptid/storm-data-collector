@@ -19,23 +19,10 @@ KAFKA_TOPIC=raw-weather-reports
 
 # CSV Data Source
 REPORTS_BASE_URL=https://example.com/
-BATCH_SIZE=500
-MAX_CONCURRENT_CSV=3
 REPORT_TYPES=torn,wind,hail
 
 # Cron Configuration
 CRON_SCHEDULE="0 0 * * *"
-
-# Retry Configuration (exponential backoff for 500 errors)
-CRON_FALLBACK_INTERVAL_MIN=30       # Base fallback interval in minutes
-CRON_MAX_FALLBACK_ATTEMPTS=3        # Maximum retry attempts for 500 errors
-
-# DLQ Configuration (Dead Letter Queue for failed messages)
-KAFKA_DLQ_TOPIC=raw-weather-reports-dlq
-DLQ_ENABLED=true
-DLQ_FILE_FALLBACK_DIR=./data/dlq
-DLQ_FILE_MAX_SIZE_MB=10
-DLQ_INCLUDE_STACK_TRACES=true
 
 # Logging
 LOG_LEVEL=info  # fatal, error, warn, info, debug
@@ -45,23 +32,15 @@ LOG_LEVEL=info  # fatal, error, warn, info, debug
 
 The schema is defined in `src/config.ts`:
 
-| Variable                     | Type    | Default                   | Constraints       |
-| ---------------------------- | ------- | ------------------------- | ----------------- |
-| `KAFKA_BROKERS`              | String  | `localhost:9092`          |                   |
-| `KAFKA_CLIENT_ID`            | String  | `csv-producer`            |                   |
-| `KAFKA_TOPIC`                | String  | `raw-weather-reports`     |                   |
-| `REPORTS_BASE_URL`           | URL     | `https://example.com/`    | Must be valid URL |
-| `BATCH_SIZE`                 | Number  | `500`                     | Positive          |
-| `MAX_CONCURRENT_CSV`         | Number  | `3`                       | Positive, max 10  |
-| `CRON_SCHEDULE`              | String  | `0 0 * * *`               |                   |
-| `CRON_FALLBACK_INTERVAL_MIN` | Number  | `30`                      | Positive, max 120 |
-| `CRON_MAX_FALLBACK_ATTEMPTS` | Number  | `3`                       | Positive, max 5   |
-| `REPORT_TYPES`               | String  | `torn,hail,wind`          | Comma-separated   |
-| `KAFKA_DLQ_TOPIC`            | String  | `raw-weather-reports-dlq` |                   |
-| `DLQ_ENABLED`                | Boolean | `true`                    |                   |
-| `DLQ_FILE_FALLBACK_DIR`      | String  | `./data/dlq`              |                   |
-| `DLQ_FILE_MAX_SIZE_MB`       | Number  | `10`                      | Positive          |
-| `DLQ_INCLUDE_STACK_TRACES`   | Boolean | `true`                    |                   |
+| Variable           | Type   | Default                | Constraints                      |
+| ------------------ | ------ | ---------------------- | -------------------------------- |
+| `KAFKA_BROKERS`    | String | `localhost:9092`       | Comma-separated broker addresses |
+| `KAFKA_CLIENT_ID`  | String | `csv-producer`         | Unique client identifier         |
+| `KAFKA_TOPIC`      | String | `raw-weather-reports`  | Target Kafka topic               |
+| `REPORTS_BASE_URL` | URL    | `https://example.com/` | Must be valid URL                |
+| `REPORT_TYPES`     | String | `torn,hail,wind`       | Comma-separated types            |
+| `CRON_SCHEDULE`    | String | `0 0 * * *`            | Valid cron expression            |
+| `LOG_LEVEL`        | String | `info`                 | fatal, error, warn, info, debug  |
 
 ## Validation Errors
 
@@ -80,4 +59,14 @@ ZodError: [
 ]
 ```
 
-See [[Architecture]] for how these values affect retry and error handling behavior.
+## Retry Behavior
+
+HTTP errors with status 500-599 trigger automatic retries:
+
+- Fixed 5-minute delay between retries
+- Maximum 3 retry attempts
+- Total maximum time: ~15 minutes per CSV
+
+Client errors (4xx) and network errors are not retried.
+
+See [[Architecture]] for error handling details.

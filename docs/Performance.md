@@ -10,7 +10,7 @@ Each scheduled job runs a three-stage pipeline per report type:
 HTTP Fetch (CSV) → Stream Parse (csv-parser) → Batch Publish (KafkaJS)
 ```
 
-All report types are processed concurrently via `Promise.allSettled()`. Within each report type, rows are streamed line-by-line and published to Kafka. Data from the CSV response stream is buffered in memory before publishing.
+All report types are processed concurrently via `Promise.allSettled()`. Within each report type, rows are streamed line-by-line and published to Kafka in a single batch.
 
 ## Throughput Estimates
 
@@ -22,7 +22,7 @@ All report types are processed concurrently via `Promise.allSettled()`. Within e
 | CSV Parse     | CPU-bound stream transform | ~50,000–100,000 rows/s |
 | Kafka Publish | Network I/O, broker acks   | ~5,000–20,000 msgs/s   |
 
-Kafka publishing is the primary bottleneck. The entire parsed CSV is buffered in memory before sending to Kafka as a single `producer.send()` call, so throughput depends on CSV size and round-trip latency to the broker.
+Kafka publishing is the primary bottleneck. The entire parsed CSV is published to Kafka as a single batch in one `producer.send()` call, so throughput depends on CSV size and round-trip latency to the broker.
 
 **Estimated latency per CSV:**
 
@@ -74,16 +74,6 @@ The CSV parser operates as a Node.js stream transform, processing rows one at a 
 
 With 3 concurrent report types, peak application memory usage should stay under **~50–100 MB** (excluding Node.js runtime overhead of ~30–50 MB).
 
-### Memory Optimization
-
-To reduce memory usage for multi-gigabyte CSVs:
-
-1. Stream rows one-at-a-time rather than accumulating the entire file
-2. Implement configurable batch size to chunk large CSVs into smaller publishes
-3. Add periodic producer flushes to prevent unbounded accumulation
-
-Current implementation prioritizes simplicity; optimization is warranted if SPC data volumes increase significantly.
-
 ## Kafka Producer Behavior
 
 The producer uses KafkaJS defaults (no custom producer configuration):
@@ -96,14 +86,6 @@ The producer uses KafkaJS defaults (no custom producer configuration):
 | `maxInFlightRequests` | `undefined` (no limit) | Allows pipelining, but single CSV per call limits benefit          |
 
 Currently, KafkaJS producer options cannot be customized via environment variables. Each `producer.send()` call publishes the entire parsed CSV as a single message batch.
-
-### Possible Future Tuning
-
-To improve throughput in high-volume scenarios:
-
-- **Enable compression** — Reduces network payload by ~60–80% for JSON data, at cost of ~5–10% CPU
-- **Set `acks: 1`** — Acknowledge after leader write only, reducing latency by ~30–50%
-- **Add configurable timeout** — Allow overriding the 30s default for high-latency networks
 
 ## Publishing Strategy
 
@@ -118,32 +100,20 @@ Currently, the entire parsed CSV is published to Kafka in a single `producer.sen
 **Disadvantages:**
 
 - Unbounded memory usage proportional to CSV size
-- Single failure routes entire CSV to DLQ (no partial recovery)
+- Single failure routes entire CSV to error log (no partial recovery)
 - Not optimized for multi-gigabyte CSVs
 
-### Potential Improvements
+## Retry Behavior
 
-For better throughput and resilience:
-
-| Strategy                    | Benefit                                       | Trade-off                         |
-| --------------------------- | --------------------------------------------- | --------------------------------- |
-| **Configurable batch size** | Reduce peak memory, finer failure granularity | More Kafka roundtrips, complexity |
-| **Streaming publish**       | Constant memory regardless of CSV size        | Real-time error handling needed   |
-| **Batch retries**           | Retry only failed batches                     | Requires batch tracking & state   |
-
-The current all-rows-at-once strategy is appropriate for typical SPC data volumes (~160–1,400 rows/day) but should be revisited if data scales by 100x+.
-
-## Scheduling & Retry Overhead
-
-The cron scheduler (default: `CRON_SCHEDULE=0 0 * * *`, daily at midnight) has negligible overhead outside of job execution. Retry behavior adds latency only on failure:
+HTTP 500-599 errors trigger automatic retries with fixed 5-minute intervals:
 
 | Scenario                           | Retry Logic                               | Total Time        |
 | ---------------------------------- | ----------------------------------------- | ----------------- |
 | All CSVs succeed                   | No retries                                | < 1 second        |
 | One 5xx error → retry succeeds     | 5-minute fixed delay, 1 retry             | ~5 minutes        |
-| Max retries exhausted (3 attempts) | 5-minute delay between each of 3 attempts | ~10 minutes total |
+| Max retries exhausted (3 attempts) | 5-minute delay between each of 3 attempts | ~15 minutes total |
 
-Retries use a **fixed 5-minute interval** (not exponential backoff):
+Retries use a **fixed 5-minute interval**:
 
 - Attempt 1: Immediate
 - Attempt 2: +5 minutes
@@ -161,21 +131,6 @@ Retries are per-report-type and run independently, so a failing hail CSV does no
 
 ## Scaling Considerations
 
-### Vertical Scaling
-
-Current implementation is limited for vertical scaling since the entire CSV is loaded into memory. Options:
-
-1. **Increase retry timeout** — Set custom timeout for high-latency network environments
-2. **Run on high-memory machine** — Supports larger CSVs (current: ~10-100 MB practical limit)
-3. **Implement streaming publish** — Refactor to batch CSV rows in configurable chunks
-
-### Horizontal Scaling
-
-- Multiple instances can run with staggered `CRON_SCHEDULE` values
-- The singleton Kafka producer is per-process, so each instance maintains its own connection pool
-- No shared state between instances — each fetches and publishes independently
-- Consider load-balancing CSV fetches across instances if source server rate-limits
-
 ### Current Bottlenecks (in order of impact)
 
 1. **CSV size ↔ Memory** — Unbounded memory growth with CSV rows (primary limiter)
@@ -184,5 +139,6 @@ Current implementation is limited for vertical scaling since the entire CSV is l
 4. **Network bandwidth** — Secondary; compression disabled by default
 5. **CPU (CSV parsing & JSON serialization)** — Unlikely bottleneck at current volumes (<2% CPU typical)
 
-**Recommended scaling approach:**
-For data volumes >100x current SPC levels, implement **batch-based publishing** (e.g., 500–1000 rows per Kafka call) to decouple memory from throughput, then add horizontal scaling.
+### Future Optimization
+
+For data volumes >100x current SPC levels, consider implementing **batch-based publishing** (e.g., 500–1000 rows per Kafka call) to decouple memory from throughput.

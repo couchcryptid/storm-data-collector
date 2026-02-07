@@ -2,59 +2,39 @@
 
 ## Error Handling Flow
 
-The application implements a robust three-tier error handling system:
+The application implements a three-tier error handling system:
 
-### 1. HTTP Error Handling (Exponential Backoff)
+### 1. HTTP Error Handling (Fixed Interval Retry)
 
-- **500-599 errors**: Retry with exponential backoff (30min → 60min → 120min)
+- **500-599 errors**: Retry with fixed 5-minute interval (max 3 attempts)
 - **404 errors**: Skip (CSV not published yet)
 - **400-499 errors**: Log and skip (client errors)
 
-### 2. Kafka Publishing (Dead Letter Queue)
+### 2. Kafka Publishing
 
-- **Success**: Message published to main topic
-- **Failure**: Message sent to DLQ topic with metadata
-- **DLQ Failure**: Fallback to local JSON file
-- **File Failure**: Critical log with message sample
+- **Success**: Messages published to Kafka topic
+- **Failure**: Logs error and stops processing
 
-### 3. Graceful Degradation
+### 3. Recovery
 
 ```
-CSV Fetch → Kafka Main Topic → DLQ Topic → File Fallback → Console Log
-```
-
-## DLQ Message Structure
-
-Messages sent to the DLQ include rich metadata for debugging:
-
-```json
-{
-  "originalMessage": { /* CSV row data */ },
-  "metadata": {
-    "timestamp": "2026-02-06T10:30:00.000Z",
-    "originalTopic": "raw-weather-reports",
-    "errorType": "kafka_publish",
-    "errorMessage": "Connection timeout",
-    "errorStack": "...",
-    "attemptNumber": 1,
-    "batchId": "uuid-v4",
-    "csvUrl": "https://example.com/260206_hail.csv",
-    "weatherType": "hail"
-  }
-}
+CSV Fetch → HTTP Retry Loop (5min × 3 attempts) → Kafka Publish → Log Result
 ```
 
 ## Retry Strategy
 
-Exponential backoff formula: `baseIntervalMinutes × 2^attemptNumber`
+Fixed interval retry with `5-minute delay between attempts`
 
-Example with `CRON_FALLBACK_INTERVAL_MIN=30`:
+Example retry flow:
 
-| Attempt | Delay |
-| --- | --- |
-| 1 | Immediate |
-| 2 | 30 minutes |
-| 3 | 60 minutes |
-| 4 | 120 minutes |
+| Attempt | Delay     | Total Time |
+| ------- | --------- | ---------- |
+| 1       | Immediate | 0s         |
+| 2       | 5 minutes | 5m         |
+| 3       | 5 minutes | 10m        |
+| 4       | 5 minutes | 15m        |
+| Max+1   | Failure   | ~15m       |
 
-See [[Configuration]] for retry-related environment variables.
+Retries only apply to 500-599 server errors. Client errors (4xx) and network errors are not retried.
+
+See [[Configuration]] for cron scheduling configuration.
