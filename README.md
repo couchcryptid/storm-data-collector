@@ -1,6 +1,6 @@
-# ht-weather-data-collector
+# Storm Report Data Collection Service
 
-Weather data collector for HailTrace using Kafka streaming.
+Modern NodeJS + Typescript storm report data collector for HailTrace using Kafka streaming. Fetches wind, hail, and tornado csv reports, converts them to json format and publishes them to kafka.
 
 ## Prerequisites
 
@@ -60,7 +60,25 @@ docker buildx build -t ht-weather-data-collector .
 Create a `.env` file in the root directory:
 
 ```env
-# Add your environment variables here
+# Node Environment
+NODE_ENV=development
+
+# Kafka Configuration
+# For Docker: Use kafka:29092 (internal network)
+# For local: Use localhost:9092
+KAFKA_BROKERS=kafka:29092
+KAFKA_CLIENT_ID=ht-weather-collector
+KAFKA_TOPIC=raw-weather-reports
+
+# CSV Data Source
+CSV_BASE_URL=https://example.com/
+BATCH_SIZE=500
+MAX_CONCURRENT_CSV=3
+CSV_TYPES=torn,wind,hail
+
+# Cron Configuration
+CRON_SCHEDULE="0 0 * * *"
+CRON_RETRY_INTERVAL=6
 ```
 
 ## Project Structure

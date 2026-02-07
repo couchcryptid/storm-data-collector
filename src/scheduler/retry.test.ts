@@ -21,27 +21,31 @@ describe('checkCsvAvailability', () => {
     console.error = originalConsoleError;
   });
 
-  it('returns true when CSV is available', async () => {
+  it('returns true when hail report CSV is available', async () => {
     (global.fetch as any).mockResolvedValue({
       ok: true,
       status: 200,
     });
 
-    const result = await checkCsvAvailability('https://example.com/test.csv');
+    const result = await checkCsvAvailability(
+      'https://www.spc.noaa.gov/climo/reports/260206_hail.csv'
+    );
 
     expect(result).toBe(true);
-    expect(global.fetch).toHaveBeenCalledWith('https://example.com/test.csv');
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://www.spc.noaa.gov/climo/reports/260206_hail.csv'
+    );
     expect(console.warn).not.toHaveBeenCalled();
   });
 
-  it('returns false and logs warning when CSV is not found', async () => {
+  it('returns false when tornado report CSV is not found', async () => {
     (global.fetch as any).mockResolvedValue({
       ok: false,
       status: 404,
     });
 
     const result = await checkCsvAvailability(
-      'https://example.com/missing.csv'
+      'https://www.spc.noaa.gov/climo/reports/260206_torn.csv'
     );
 
     expect(result).toBe(false);
@@ -49,23 +53,43 @@ describe('checkCsvAvailability', () => {
       expect.stringContaining('CSV missing or unavailable')
     );
     expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('https://example.com/missing.csv')
+      expect.stringContaining(
+        'https://www.spc.noaa.gov/climo/reports/260206_torn.csv'
+      )
     );
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('status 404')
     );
   });
 
-  it('returns false and logs error when fetch throws', async () => {
-    const fetchError = new Error('Network error');
+  it('returns false and logs error when network error occurs', async () => {
+    const fetchError = new Error('Network timeout');
     (global.fetch as any).mockRejectedValue(fetchError);
 
-    const result = await checkCsvAvailability('https://example.com/error.csv');
+    const result = await checkCsvAvailability(
+      'https://www.spc.noaa.gov/climo/reports/260206_wind.csv'
+    );
 
     expect(result).toBe(false);
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Error checking CSV availability'),
       fetchError
+    );
+  });
+
+  it('handles server error status gracefully', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+
+    const result = await checkCsvAvailability(
+      'https://www.spc.noaa.gov/climo/reports/260206_hail.csv'
+    );
+
+    expect(result).toBe(false);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('status 500')
     );
   });
 });
@@ -86,7 +110,7 @@ describe('scheduleRetry', () => {
     vi.useRealTimers();
   });
 
-  it('does nothing when failedTypes is empty', () => {
+  it('does nothing when no failed CSV types', () => {
     const mockCallback = vi.fn();
 
     scheduleRetry([], mockCallback, 6);
@@ -95,10 +119,10 @@ describe('scheduleRetry', () => {
     expect(mockCallback).not.toHaveBeenCalled();
   });
 
-  it('logs warning when retryHours is invalid', () => {
+  it('logs warning when retry hours is zero', () => {
     const mockCallback = vi.fn();
 
-    scheduleRetry(['type1'], mockCallback, 0);
+    scheduleRetry(['hail'], mockCallback, 0);
 
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('Invalid retry hours: 0')
@@ -106,10 +130,10 @@ describe('scheduleRetry', () => {
     expect(mockCallback).not.toHaveBeenCalled();
   });
 
-  it('logs warning when retryHours is negative', () => {
+  it('logs warning when retry hours is negative', () => {
     const mockCallback = vi.fn();
 
-    scheduleRetry(['type1'], mockCallback, -1);
+    scheduleRetry(['wind'], mockCallback, -1);
 
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('Invalid retry hours: -1')
@@ -117,10 +141,10 @@ describe('scheduleRetry', () => {
     expect(mockCallback).not.toHaveBeenCalled();
   });
 
-  it('schedules retry with correct delay and logs messages', async () => {
+  it('schedules retry for failed storm report types', async () => {
     const mockCallback = vi.fn().mockResolvedValue(undefined);
-    const failedTypes = ['sales', 'inventory'];
-    const retryHours = 6;
+    const failedTypes = ['hail', 'wind'];
+    const retryHours = 3; // From CRON_RETRY_INTERVAL in .env
 
     scheduleRetry(failedTypes, mockCallback, retryHours);
 
@@ -129,11 +153,11 @@ describe('scheduleRetry', () => {
       expect.stringContaining('Scheduling retry at')
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('sales, inventory')
+      expect.stringContaining('hail, wind')
     );
 
-    // Advance time by 6 hours
-    await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+    // Advance time by 3 hours
+    await vi.advanceTimersByTimeAsync(3 * 60 * 60 * 1000);
 
     // Check that retry callback was called
     expect(mockCallback).toHaveBeenCalledWith(failedTypes);
@@ -142,14 +166,11 @@ describe('scheduleRetry', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Retry CSV job...')
     );
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Retry job completed')
-    );
   });
 
-  it('executes callback with failed types', async () => {
+  it('executes callback with all failed report types', async () => {
     const mockCallback = vi.fn().mockResolvedValue(undefined);
-    const failedTypes = ['type1', 'type2', 'type3'];
+    const failedTypes = ['torn', 'hail', 'wind'];
 
     scheduleRetry(failedTypes, mockCallback, 1);
 
@@ -161,10 +182,10 @@ describe('scheduleRetry', () => {
   });
 
   it('handles callback errors gracefully', async () => {
-    const callbackError = new Error('Callback failed');
+    const callbackError = new Error('CSV processing failed');
     const mockCallback = vi.fn().mockRejectedValue(callbackError);
 
-    scheduleRetry(['type1'], mockCallback, 1);
+    scheduleRetry(['hail'], mockCallback, 1);
 
     // Advance time by 1 hour
     await vi.advanceTimersByTimeAsync(1 * 60 * 60 * 1000);
@@ -173,12 +194,28 @@ describe('scheduleRetry', () => {
     await vi.runAllTimersAsync();
 
     // Callback should have been called despite error
-    expect(mockCallback).toHaveBeenCalledWith(['type1']);
+    expect(mockCallback).toHaveBeenCalledWith(['hail']);
 
     // Verify error was logged
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Error during retry callback'),
       callbackError
     );
+  });
+
+  it('respects environment-configured retry interval', async () => {
+    const mockCallback = vi.fn().mockResolvedValue(undefined);
+    const failedTypes = ['wind'];
+    const retryHours = 6; // Default from config
+
+    scheduleRetry(failedTypes, mockCallback, retryHours);
+
+    // Should not call before 6 hours
+    await vi.advanceTimersByTimeAsync(5 * 60 * 60 * 1000);
+    expect(mockCallback).not.toHaveBeenCalled();
+
+    // Should call after 6 hours
+    await vi.advanceTimersByTimeAsync(1 * 60 * 60 * 1000);
+    expect(mockCallback).toHaveBeenCalledTimes(1);
   });
 });

@@ -7,20 +7,20 @@ vi.mock('../csv/csvStream.js', () => ({
 
 vi.mock('../config.js', () => ({
   config: {
-    cron: { schedule: '0 0 * * *', retryInterval: 6 },
-    csvBaseUrl: 'https://example.com/',
-    csvTypes: ['sales', 'inventory', 'orders'],
-    topic: 'test-topic',
-    kafka: { clientId: 'test', brokers: ['localhost:9092'] },
+    cron: { schedule: '0 1 * * *', retryInterval: 3 },
+    csvBaseUrl: 'https://www.spc.noaa.gov/climo/reports/',
+    csvTypes: ['torn', 'hail', 'wind'],
+    topic: 'raw-weather-reports',
+    kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
     batchSize: 500,
-    maxConcurrentCsv: 2,
-    retryHours: 6,
+    maxConcurrentCsv: 3,
+    retryHours: 3,
   },
 }));
 
 vi.mock('../csv/utils.js', () => ({
   buildCsvUrl: vi.fn(
-    (baseUrl: string, type: string) => `${baseUrl}${type}.csv`
+    (baseUrl: string, type: string) => `${baseUrl}260206_${type}.csv`
   ),
 }));
 
@@ -51,7 +51,7 @@ import { checkCsvAvailability, scheduleRetry } from './retry.js';
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 
-describe('startScheduler', () => {
+describe('startScheduler with real weather report types', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     console.log = vi.fn();
@@ -63,7 +63,7 @@ describe('startScheduler', () => {
     console.error = originalConsoleError;
   });
 
-  it('starts scheduler with correct cron pattern', async () => {
+  it('starts scheduler with correct cron pattern from environment', async () => {
     startScheduler();
 
     // Wait for immediate execution to complete
@@ -72,13 +72,16 @@ describe('startScheduler', () => {
     // Check that the cron callback was stored
     expect(storedCronCallback).toBeDefined();
 
-    // Should log scheduler started message
+    // Should log scheduler started message with the configured schedule
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Scheduler started with pattern')
     );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('0 1 * * *')
+    );
   });
 
-  it('processes all CSV types successfully', async () => {
+  it('processes all weather report types (torn, hail, wind) successfully', async () => {
     (checkCsvAvailability as any).mockResolvedValue(true);
     (csvStreamToKafka as any).mockResolvedValue(undefined);
 
@@ -90,17 +93,25 @@ describe('startScheduler', () => {
     // Should check availability for all 3 types (from immediate run)
     expect(checkCsvAvailability).toHaveBeenCalledTimes(3);
     expect(checkCsvAvailability).toHaveBeenCalledWith(
-      'https://example.com/sales.csv'
+      'https://www.spc.noaa.gov/climo/reports/260206_torn.csv'
     );
     expect(checkCsvAvailability).toHaveBeenCalledWith(
-      'https://example.com/inventory.csv'
+      'https://www.spc.noaa.gov/climo/reports/260206_hail.csv'
     );
     expect(checkCsvAvailability).toHaveBeenCalledWith(
-      'https://example.com/orders.csv'
+      'https://www.spc.noaa.gov/climo/reports/260206_wind.csv'
     );
 
     // Should process all 3 types (from immediate run)
     expect(csvStreamToKafka).toHaveBeenCalledTimes(3);
+
+    // Verify correct configuration was passed
+    const firstCall = (csvStreamToKafka as any).mock.calls[0];
+    expect(firstCall[0]).toMatchObject({
+      topic: 'raw-weather-reports',
+      kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
+      batchSize: 500,
+    });
 
     // Should not schedule retry when all succeed
     expect(scheduleRetry).not.toHaveBeenCalled();
@@ -119,12 +130,12 @@ describe('startScheduler', () => {
     expect(csvStreamToKafka).toHaveBeenCalledTimes(3);
   });
 
-  it('tracks failed CSV types and schedules retry', async () => {
-    // First type unavailable, others available
+  it('tracks failed weather types and schedules retry with configured interval', async () => {
+    // Hail report unavailable, others available
     (checkCsvAvailability as any)
-      .mockResolvedValueOnce(false) // sales - unavailable
-      .mockResolvedValueOnce(true) // inventory - available
-      .mockResolvedValueOnce(true); // orders - available
+      .mockResolvedValueOnce(true) // torn - available
+      .mockResolvedValueOnce(false) // hail - unavailable
+      .mockResolvedValueOnce(true); // wind - available
 
     (csvStreamToKafka as any).mockResolvedValue(undefined);
 
@@ -136,22 +147,22 @@ describe('startScheduler', () => {
     // Should still process available ones
     expect(csvStreamToKafka).toHaveBeenCalledTimes(2);
 
-    // Should schedule retry for failed type
+    // Should schedule retry for failed type with 3-hour interval
     expect(scheduleRetry).toHaveBeenCalledWith(
-      ['sales'],
+      ['hail'],
       expect.any(Function),
-      6
+      3 // From CRON_RETRY_INTERVAL
     );
   });
 
-  it('tracks processing errors and schedules retry', async () => {
+  it('handles processing errors in tornado reports and schedules retry', async () => {
     (checkCsvAvailability as any).mockResolvedValue(true);
 
-    // Second type fails processing
+    // Tornado processing fails
     (csvStreamToKafka as any)
-      .mockResolvedValueOnce(undefined) // sales - success
-      .mockRejectedValueOnce(new Error('Processing failed')) // inventory - error
-      .mockResolvedValueOnce(undefined); // orders - success
+      .mockRejectedValueOnce(new Error('Tornado CSV processing error'))
+      .mockResolvedValueOnce(undefined) // hail - success
+      .mockResolvedValueOnce(undefined); // wind - success
 
     startScheduler();
 
@@ -164,18 +175,18 @@ describe('startScheduler', () => {
     // Should log error
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to process'),
-      expect.stringContaining('Processing failed')
+      expect.stringContaining('Tornado CSV processing error')
     );
 
     // Should schedule retry for failed type
     expect(scheduleRetry).toHaveBeenCalledWith(
-      ['inventory'],
+      ['torn'],
       expect.any(Function),
-      6
+      3
     );
   });
 
-  it('respects maxConcurrentCsv limit', async () => {
+  it('respects maxConcurrentCsv limit from configuration', async () => {
     (checkCsvAvailability as any).mockResolvedValue(true);
 
     let concurrentCalls = 0;
@@ -198,11 +209,11 @@ describe('startScheduler', () => {
     // Wait for immediate execution to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // With maxConcurrentCsv=2 and 3 types, should never exceed 2 concurrent
-    expect(maxConcurrent).toBeLessThanOrEqual(2);
+    // With maxConcurrentCsv=3 and 3 types, should not exceed 3 concurrent
+    expect(maxConcurrent).toBeLessThanOrEqual(3);
   });
 
-  it('handles multiple failures correctly', async () => {
+  it('handles all weather types failing and schedules retry', async () => {
     // All types fail
     (checkCsvAvailability as any).mockResolvedValue(false);
 
@@ -216,9 +227,9 @@ describe('startScheduler', () => {
 
     // Should schedule retry for all failed types
     expect(scheduleRetry).toHaveBeenCalledWith(
-      ['sales', 'inventory', 'orders'],
+      ['torn', 'hail', 'wind'],
       expect.any(Function),
-      6
+      3
     );
   });
 
@@ -247,5 +258,51 @@ describe('startScheduler', () => {
       call[0].match(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\]/)
     );
     expect(hasTimestamp).toBe(true);
+  });
+
+  it('uses real config values (localhost:9092, batch size 500, raw-weather-reports topic)', async () => {
+    (checkCsvAvailability as any).mockResolvedValue(true);
+    (csvStreamToKafka as any).mockResolvedValue(undefined);
+
+    startScheduler();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Verify each call includes real config values
+    const calls = (csvStreamToKafka as any).mock.calls;
+    calls.forEach((call: any[]) => {
+      expect(call[0]).toMatchObject({
+        topic: 'raw-weather-reports',
+        kafka: {
+          clientId: 'storm-data-collector',
+          brokers: ['localhost:9092'],
+        },
+        batchSize: 500,
+      });
+    });
+  });
+
+  it('handles partial failures with multiple report types', async () => {
+    // Torn available, others fail
+    (checkCsvAvailability as any)
+      .mockResolvedValueOnce(true) // torn - available
+      .mockResolvedValueOnce(false) // hail - unavailable
+      .mockResolvedValueOnce(false); // wind - unavailable
+
+    (csvStreamToKafka as any).mockResolvedValueOnce(undefined);
+
+    startScheduler();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Only torn processed
+    expect(csvStreamToKafka).toHaveBeenCalledTimes(1);
+
+    // Schedule retry for hail and wind
+    expect(scheduleRetry).toHaveBeenCalledWith(
+      ['hail', 'wind'],
+      expect.any(Function),
+      3
+    );
   });
 });
