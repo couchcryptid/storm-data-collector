@@ -14,7 +14,7 @@ console.log(`Batch Size: ${config.batchSize}`);
 console.log(`Max Concurrent CSV: ${config.maxConcurrentCsv}`);
 console.log(`Cron Schedule: ${config.cron.schedule}`);
 console.log(
-  `Retry Config: ${config.cron.retryIntervalMin}min base interval, ${config.cron.maxFallbackAttempts} max attempts`
+  `Retry Config: ${config.cron.fallbackIntervalMin}min base interval, ${config.cron.maxFallbackAttempts} max attempts`
 );
 console.log(`DLQ: ${config.dlq.enabled ? 'Enabled' : 'Disabled'}`);
 if (config.dlq.enabled) {

@@ -23,7 +23,7 @@ vi.mock('../config.js', () => ({
   config: {
     cron: {
       schedule: '0 1 * * *',
-      retryIntervalMin: 30,
+      fallbackIntervalMin: 30,
       maxFallbackAttempts: 3,
     },
     csvBaseUrl: 'https://www.spc.noaa.gov/climo/reports/',

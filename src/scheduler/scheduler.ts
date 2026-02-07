@@ -62,7 +62,7 @@ async function processCsvWithFallback(
         if (currentAttempt < maxAttempts) {
           const delayMs = calculateFallbackDelay(
             currentAttempt,
-            config.cron.retryIntervalMin
+            config.cron.fallbackIntervalMin
           );
           const delayMinutes = Math.round(delayMs / 60000);
 

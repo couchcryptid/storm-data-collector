@@ -28,14 +28,14 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: zookeeper
-    env_file: zookeeper.env
+    env_file: .env.zookeeper
     ports:
       - "2181:2181"
     volumes:
       - zookeeper-data:/var/lib/zookeeper/data
       - zookeeper-logs:/var/lib/zookeeper/log
     healthcheck:
-      test: ["CMD", "bash", "-c", "echo srvr | nc localhost 2181 | grep -q standalone"]
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,9 +49,9 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
+    env_file: .env.kafka
     ports:
       - "9092:9092"
-    env_file: kafka.env
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
@@ -70,20 +70,23 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    env_file: .env.kafka-ui
     ports:
       - "8080:8080"
-    env_file: kafka-ui.env
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     networks:
       - kafka-network
 
 volumes:
   zookeeper-data:
-    driver: local
   zookeeper-logs:
-    driver: local
   kafka-data:
-    driver: local
 
 networks:
   kafka-network:

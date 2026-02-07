@@ -80,7 +80,7 @@ CSV_TYPES=torn,wind,hail
 CRON_SCHEDULE="0 0 * * *"
 
 # Retry Configuration (exponential backoff for 500 errors)
-CRON_RETRY_INTERVAL_MIN=30       # Base retry interval in minutes (exponential backoff)
+CRON_FALLBACK_INTERVAL_MIN=30       # Base fallback interval in minutes (exponential backoff)
 CRON_MAX_FALLBACK_ATTEMPTS=3     # Maximum retry attempts for 500 errors
 
 # DLQ Configuration (Dead Letter Queue for failed messages)
@@ -137,7 +137,7 @@ Messages sent to the DLQ include rich metadata for debugging:
 
 Exponential backoff formula: `baseIntervalMinutes × 2^attemptNumber`
 
-Example with `CRON_RETRY_INTERVAL_MIN=30`:
+Example with `CRON_FALLBACK_INTERVAL_MIN=30`:
 - Attempt 1: Immediate
 - Attempt 2: 30 minutes later
 - Attempt 3: 60 minutes later
