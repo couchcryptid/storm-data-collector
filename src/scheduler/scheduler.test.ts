@@ -92,10 +92,8 @@ describe('startScheduler with exponential fallback', () => {
         call[1]?.includes?.('Scheduler started') || call[0]?.pattern
     );
     expect(infoCall).toBeDefined();
-    if (Array.isArray(infoCall) && infoCall.length >= 2) {
-      expect(infoCall[0]).toEqual({ pattern: '0 1 * * *' });
-      expect(infoCall[1]).toBe('Scheduler started');
-    }
+    expect(infoCall[0]).toEqual({ pattern: '0 1 * * *' });
+    expect(infoCall[1]).toBe('Scheduler started');
   });
 
   it('processes all weather types successfully', async () => {
@@ -111,14 +109,12 @@ describe('startScheduler with exponential fallback', () => {
       call[1]?.includes?.('CSV job finished')
     );
     expect(finishedCall).toBeDefined();
-    if (Array.isArray(finishedCall) && finishedCall.length >= 2) {
-      expect(finishedCall[0]).toEqual({
-        successful: 3,
-        failed: 0,
-        total: 3,
-      });
-      expect(finishedCall[1]).toBe('CSV job finished');
-    }
+    expect(finishedCall[0]).toEqual({
+      successful: 3,
+      failed: 0,
+      total: 3,
+    });
+    expect(finishedCall[1]).toBe('CSV job finished');
   });
 
   it('retries with exponential backoff on 500 error', async () => {
@@ -150,19 +146,15 @@ describe('startScheduler with exponential fallback', () => {
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
       (call: any) => call[0].type === 'hail'
     );
-    expect(hailCalls.length).toBeGreaterThanOrEqual(3);
+    expect(hailCalls.length).toBe(3);
 
     // Check for warning log with 500 status code
     const warnCall = (logger.warn as any).mock.calls.find(
       (call: any) => call[0]?.statusCode === 500
     );
     expect(warnCall).toBeDefined();
-    if (Array.isArray(warnCall) && warnCall.length >= 2) {
-      expect(warnCall[0].statusCode).toBe(500);
-      expect(warnCall[1]).toBe(
-        'Server error, retrying with exponential backoff'
-      );
-    }
+    expect(warnCall[0].statusCode).toBe(500);
+    expect(warnCall[1]).toBe('Server error, retrying with exponential backoff');
   });
 
   it('stops retrying after max attempts on 500 errors', async () => {
@@ -198,9 +190,7 @@ describe('startScheduler with exponential fallback', () => {
       (call: any) => call[0]?.maxAttempts === 3 && call[0]?.statusCode === 500
     );
     expect(errorCall).toBeDefined();
-    if (Array.isArray(errorCall) && errorCall.length >= 2) {
-      expect(errorCall[1]).toBe('Max retry attempts reached');
-    }
+    expect(errorCall[1]).toBe('Max retry attempts reached');
   });
 
   it('does not retry on 404 error', async () => {
@@ -304,10 +294,8 @@ describe('startScheduler with exponential fallback', () => {
       (call: any) => call[0]?.successful !== undefined
     );
     expect(finishedCall).toBeDefined();
-    if (Array.isArray(finishedCall) && finishedCall[0]) {
-      expect(finishedCall[0].successful).toBe(1);
-      expect(finishedCall[0].failed).toBe(2);
-    }
+    expect(finishedCall[0].successful).toBe(1);
+    expect(finishedCall[0].failed).toBe(2);
   });
 
   it('respects maxConcurrentCsv limit', async () => {
@@ -350,13 +338,11 @@ describe('startScheduler with exponential fallback', () => {
         call[0]?.successful !== undefined && call[1] === 'CSV job finished'
     );
     expect(finishCall).toBeDefined();
-    if (Array.isArray(finishCall)) {
-      expect(finishCall[0]).toMatchObject({
-        successful: 3,
-        failed: 0,
-        total: 3,
-      });
-    }
+    expect(finishCall[0]).toMatchObject({
+      successful: 3,
+      failed: 0,
+      total: 3,
+    });
   });
 
   it('includes attempt numbers in logs', async () => {
@@ -388,10 +374,8 @@ describe('startScheduler with exponential fallback', () => {
         call[0]?.attempt !== undefined && call[1] === 'Attempting CSV'
     );
     expect(attemptCall).toBeDefined();
-    if (Array.isArray(attemptCall)) {
-      expect(attemptCall[0]).toHaveProperty('attempt');
-      expect(attemptCall[0]).toHaveProperty('maxAttempts');
-    }
+    expect(attemptCall[0]).toHaveProperty('attempt');
+    expect(attemptCall[0]).toHaveProperty('maxAttempts');
   });
 
   it('handles network errors without retry', async () => {

@@ -3,6 +3,7 @@ import csvParser from 'csv-parser';
 import { CsvToKafkaOptions } from '../types/index.js';
 import { getKafkaProducer } from '../kafka/client.js';
 import { publishBatch } from '../kafka/publisher.js';
+import logger from '../logger.js';
 
 export class HttpError extends Error {
   constructor(
@@ -78,9 +79,12 @@ export async function csvStreamToKafka({
             }
           } catch (err) {
             // Should not happen (publishBatch catches errors), but defensive
-            console.error(
-              `[${new Date().toISOString()}] Unexpected error in publishBatch:`,
-              err instanceof Error ? err.message : err
+            logger.error(
+              {
+                error: err instanceof Error ? err.message : String(err),
+                csvUrl,
+              },
+              'Unexpected error in publishBatch'
             );
             batchFailures++;
           }
@@ -105,9 +109,12 @@ export async function csvStreamToKafka({
               dlqRows += rows.length;
             }
           } catch (err) {
-            console.error(
-              `[${new Date().toISOString()}] Unexpected error in final batch:`,
-              err instanceof Error ? err.message : err
+            logger.error(
+              {
+                error: err instanceof Error ? err.message : String(err),
+                csvUrl,
+              },
+              'Unexpected error in final batch'
             );
             batchFailures++;
           }
@@ -115,9 +122,9 @@ export async function csvStreamToKafka({
 
         await producer.disconnect();
 
-        console.log(
-          `[${new Date().toISOString()}] CSV processing complete: ${csvUrl}. ` +
-            `Total: ${totalRows}, Published: ${publishedRows}, DLQ: ${dlqRows}, Failed batches: ${batchFailures}`
+        logger.info(
+          { csvUrl, totalRows, publishedRows, dlqRows, batchFailures },
+          'CSV processing complete'
         );
 
         resolve();

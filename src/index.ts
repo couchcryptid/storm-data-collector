@@ -10,7 +10,7 @@ import logger, {
 
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10000;
 
-printHeader('🌩️  CSV Weather Report Cron Scheduler');
+printHeader('🌩️  CSV Storm Data Report Cron Scheduler');
 
 printConfig('CSV Base URL', config.reportsBaseUrl);
 printConfig('CSV Types', config.reportTypes.join(', '));

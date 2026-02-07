@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { DlqMessage, FileFallbackMessage } from '../types/index.js';
 import { config } from '../config.js';
+import logger from '../logger.js';
 
 /**
  * Publish messages to DLQ topic
@@ -17,8 +18,9 @@ export async function publishToDlq(
   }
 
   try {
-    console.log(
-      `[${new Date().toISOString()}] Publishing ${messages.length} messages to DLQ: ${config.dlq.topic}`
+    logger.info(
+      { count: messages.length, topic: config.dlq.topic },
+      'Publishing messages to DLQ'
     );
 
     await producer.send({
@@ -31,9 +33,9 @@ export async function publishToDlq(
 
     return messages.length;
   } catch (error) {
-    console.error(
-      `[${new Date().toISOString()}] Failed to publish to DLQ, falling back to file:`,
-      error instanceof Error ? error.message : error
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Failed to publish to DLQ, falling back to file'
     );
 
     // File fallback on DLQ publish failure
@@ -71,24 +73,33 @@ async function writeDlqToFile(
     const sizeMb = Buffer.byteLength(jsonContent, 'utf8') / (1024 * 1024);
 
     if (sizeMb > config.dlq.fileFallback.maxSizeMb) {
-      console.warn(
-        `[${new Date().toISOString()}] DLQ fallback file exceeds max size (${sizeMb.toFixed(2)}MB > ${config.dlq.fileFallback.maxSizeMb}MB). Writing anyway with warning.`
+      logger.warn(
+        {
+          sizeMb: sizeMb.toFixed(2),
+          maxSizeMb: config.dlq.fileFallback.maxSizeMb,
+        },
+        'DLQ fallback file exceeds max size, writing anyway'
       );
     }
 
     await fs.writeFile(filepath, jsonContent, 'utf8');
 
-    console.log(
-      `[${new Date().toISOString()}] Wrote ${messages.length} DLQ messages to fallback file: ${filepath}`
+    logger.info(
+      { count: messages.length, filepath },
+      'Wrote DLQ messages to fallback file'
     );
   } catch (fileError) {
-    console.error(
-      `[${new Date().toISOString()}] CRITICAL: Failed to write DLQ fallback file:`,
-      fileError instanceof Error ? fileError.message : fileError
+    logger.error(
+      {
+        error:
+          fileError instanceof Error ? fileError.message : String(fileError),
+        filepath,
+      },
+      'CRITICAL: Failed to write DLQ fallback file'
     );
-    console.error(
-      `[${new Date().toISOString()}] Lost ${messages.length} messages. First message:`,
-      JSON.stringify(messages[0], null, 2)
+    logger.error(
+      { lostCount: messages.length, firstMessage: messages[0] },
+      'Lost DLQ messages'
     );
   }
 }

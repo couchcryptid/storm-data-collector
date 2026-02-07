@@ -1,6 +1,7 @@
 import { Producer } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
 import { createDlqMessage, publishToDlq } from './dlqPublisher.js';
+import logger from '../logger.js';
 
 export interface PublishBatchOptions {
   producer: Producer;
@@ -48,9 +49,9 @@ export async function publishBatch({
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
 
-    console.error(
-      `[${new Date().toISOString()}] Kafka publish failed for batch of ${batch.length} messages:`,
-      err.message
+    logger.error(
+      { error: err.message, batchSize: batch.length, topic },
+      'Kafka publish failed'
     );
 
     // Send entire batch to DLQ (KafkaJS batches are all-or-nothing)

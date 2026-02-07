@@ -1,0 +1,84 @@
+# Storm Report Data Collection Service
+
+Modern NodeJS + Typescript storm report data collector for HailTrace using Kafka streaming. Fetches wind, hail, and tornado CSV reports, converts them to JSON format, and publishes them to Kafka.
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 24.x (LTS)
+- npm or pnpm
+- Docker (optional, for containerization)
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development
+
+```bash
+npm run dev        # Run with hot reload
+npm test           # Run tests
+npm run test:watch # Watch mode
+npm run lint       # Lint code
+npm run format     # Format code
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Docker
+
+```bash
+docker compose up                              # Development
+docker build -t storm-data-collector .         # Production
+docker buildx build -t storm-data-collector .  # Multi-platform
+```
+
+## Documentation
+
+- [[Architecture]] - Error handling, DLQ, and retry strategy
+- [[Configuration]] - Environment variables and Zod validation
+- [[Code Quality]] - Testing, coverage, git hooks
+- [[Logging]] - Pino structured logging and Chalk styling
+
+## Project Structure
+
+```
+src/
+├── csv/
+│   ├── csvStream.ts      # CSV parsing and streaming with DLQ support
+│   ├── utils.ts          # CSV URL building utilities
+│   └── csvStream.test.ts # CSV streaming tests
+├── kafka/
+│   ├── client.ts         # Kafka producer singleton
+│   ├── publisher.ts      # Batch publishing with DLQ support
+│   ├── dlqPublisher.ts   # Dead Letter Queue publishing and file fallback
+│   └── kafka.integration.test.ts
+├── scheduler/
+│   ├── scheduler.ts      # Job scheduling with exponential backoff
+│   └── scheduler.test.ts # Scheduler tests
+├── types/
+│   └── index.d.ts        # TypeScript type definitions
+├── config.ts             # Configuration management with Zod validation
+├── health.ts             # Health check endpoint for Docker
+└── index.ts              # Application entry point
+```
+
+## Tech Stack
+
+- TypeScript
+- Node.js 24 (LTS)
+- KafkaJS
+- csv-parser
+- Croner (scheduling)
+- Vitest (testing)
+- ESLint + Prettier (code quality)
+- Zod (configuration validation)
+- Pino (logging)
+- UUID (batch tracking)
