@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'wiki/**'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -44,7 +44,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Remove existing pages so deleted files don't persist
           find . -maxdepth 1 -name '*.md' -not -name '.git' -delete
-          cp ../wiki/*.md .
+          cp ../docs/*.md .
 
       - name: Commit and push wiki changes
         run: |
