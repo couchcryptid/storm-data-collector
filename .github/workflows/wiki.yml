@@ -1,0 +1,22 @@
+name: Publish Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'wiki/**'
+
+jobs:
+  publish-wiki:
+    name: Publish Wiki to GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish wiki
+        uses: andrew-alejo/publish-wiki@v0.2.1
+        with:
+          wiki-folder: wiki
+          github-token: ${{ secrets.GITHUB_TOKEN }}
