@@ -165,7 +165,16 @@ export async function csvStreamToKafka({
 
         await producer.disconnect();
 
-        logger.info({ csvUrl, ...result }, 'CSV processing complete');
+        logger.info(
+          {
+            csvUrl,
+            totalRows: result.totalRows,
+            publishedRows: result.publishedRows,
+            dlqRows: result.dlqRows,
+            batchFailures: result.batchFailures,
+          },
+          'CSV stream processing complete'
+        );
 
         resolve();
       })

@@ -74,7 +74,7 @@ async function processCsvWithFallback(
       type,
     });
 
-    logger.info({ type }, 'Completed CSV');
+    logger.info({ url, type }, 'CSV processing completed successfully');
     return true;
   } catch (err) {
     if (!isHttpError(err)) {

@@ -14,7 +14,6 @@ const logger = pino({
       translateTime: 'SYS:standard',
       ignore: 'pid,hostname',
       singleLine: false,
-      messageFormat: '{levelLabel} - {msg}',
       timeFormat: 'HH:mm:ss Z',
       // Custom color scheme
       colors: {
