@@ -37,7 +37,9 @@ jobs:
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "docs: sync wiki from repository"
-            git remote add origin https://github.com/${{ github.repository }}.wiki.git 2>/dev/null || true
-            git branch -M main
-            git push -u origin main
+            # Ensure remote uses token for authentication and push current HEAD
+            git remote remove origin 2>/dev/null || true
+            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
+            BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "main")
+            git push -u origin HEAD:refs/heads/${BRANCH}
           fi
