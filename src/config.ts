@@ -6,7 +6,7 @@ const envSchema = z.object({
   KAFKA_CLIENT_ID: z.string().default('csv-producer'),
   KAFKA_BROKERS: z.string().default('localhost:9092'),
   KAFKA_TOPIC: z.string().default('raw-weather-reports'),
-  KAFKA_DLQ_TOPIC: z.string().default('weather-data-dlq'),
+  KAFKA_DLQ_TOPIC: z.string().default('raw-weather-reports-dlq'),
   CRON_SCHEDULE: z.string().default('0 0 * * *'),
   CRON_FALLBACK_INTERVAL_MIN: z.coerce.number().positive().max(120).default(30),
   CRON_MAX_FALLBACK_ATTEMPTS: z.coerce.number().positive().max(5).default(3),
