@@ -50,6 +50,9 @@ docker compose up
 
 # Build for production
 docker build -t ht-weather-data-collector .
+
+# Build with buildx (multi-platform support)
+docker buildx build -t ht-weather-data-collector .
 ```
 
 ## Environment Variables
@@ -68,8 +71,8 @@ src/
 ├── kafka/        # Kafka producer configuration
 ├── scheduler/    # Job scheduling
 ├── types/        # TypeScript type definitions
-├── collector.ts  # Data collection logic
 ├── config.ts     # Configuration management
+├── health.ts     # Health check endpoint
 └── index.ts      # Application entry point
 ```
 

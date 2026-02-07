@@ -63,11 +63,19 @@ describe('startScheduler', () => {
     console.error = originalConsoleError;
   });
 
-  it('starts scheduler with correct cron pattern', () => {
+  it('starts scheduler with correct cron pattern', async () => {
     startScheduler();
+
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Check that the cron callback was stored
     expect(storedCronCallback).toBeDefined();
+
+    // Should log scheduler started message
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Scheduler started with pattern')
+    );
   });
 
   it('processes all CSV types successfully', async () => {
@@ -75,9 +83,11 @@ describe('startScheduler', () => {
     (csvStreamToKafka as any).mockResolvedValue(undefined);
 
     startScheduler();
-    if (storedCronCallback) await storedCronCallback();
 
-    // Should check availability for all 3 types
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should check availability for all 3 types (from immediate run)
     expect(checkCsvAvailability).toHaveBeenCalledTimes(3);
     expect(checkCsvAvailability).toHaveBeenCalledWith(
       'https://example.com/sales.csv'
@@ -89,7 +99,7 @@ describe('startScheduler', () => {
       'https://example.com/orders.csv'
     );
 
-    // Should process all 3 types
+    // Should process all 3 types (from immediate run)
     expect(csvStreamToKafka).toHaveBeenCalledTimes(3);
 
     // Should not schedule retry when all succeed
@@ -99,6 +109,14 @@ describe('startScheduler', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Initial CSV job finished')
     );
+
+    // Now test scheduled execution
+    vi.clearAllMocks();
+    if (storedCronCallback) await storedCronCallback();
+
+    // Should process all 3 types again from scheduled run
+    expect(checkCsvAvailability).toHaveBeenCalledTimes(3);
+    expect(csvStreamToKafka).toHaveBeenCalledTimes(3);
   });
 
   it('tracks failed CSV types and schedules retry', async () => {
@@ -111,7 +129,9 @@ describe('startScheduler', () => {
     (csvStreamToKafka as any).mockResolvedValue(undefined);
 
     startScheduler();
-    if (storedCronCallback) await storedCronCallback();
+
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Should still process available ones
     expect(csvStreamToKafka).toHaveBeenCalledTimes(2);
@@ -134,7 +154,9 @@ describe('startScheduler', () => {
       .mockResolvedValueOnce(undefined); // orders - success
 
     startScheduler();
-    if (storedCronCallback) await storedCronCallback();
+
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Should attempt all 3
     expect(csvStreamToKafka).toHaveBeenCalledTimes(3);
@@ -172,7 +194,9 @@ describe('startScheduler', () => {
     });
 
     startScheduler();
-    if (storedCronCallback) await storedCronCallback();
+
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // With maxConcurrentCsv=2 and 3 types, should never exceed 2 concurrent
     expect(maxConcurrent).toBeLessThanOrEqual(2);
@@ -183,7 +207,9 @@ describe('startScheduler', () => {
     (checkCsvAvailability as any).mockResolvedValue(false);
 
     startScheduler();
-    if (storedCronCallback) await storedCronCallback();
+
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Should not process any
     expect(csvStreamToKafka).not.toHaveBeenCalled();
@@ -201,8 +227,13 @@ describe('startScheduler', () => {
     (csvStreamToKafka as any).mockResolvedValue(undefined);
 
     startScheduler();
-    if (storedCronCallback) await storedCronCallback();
 
+    // Wait for immediate execution to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Running initial job immediately')
+    );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Starting CSV job...')
     );
