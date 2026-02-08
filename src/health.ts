@@ -1,4 +1,5 @@
 import { createServer } from 'http';
+import { register } from './metrics.js';
 import logger from './logger.js';
 
 /**
@@ -26,6 +27,17 @@ export function startHealthServer(port = 3000) {
           uptime: process.uptime(),
         })
       );
+    } else if (req.url === '/metrics' && req.method === 'GET') {
+      register
+        .metrics()
+        .then((body) => {
+          res.writeHead(200, { 'Content-Type': register.contentType });
+          res.end(body);
+        })
+        .catch((err) => {
+          res.writeHead(500);
+          res.end(String(err));
+        });
     } else {
       res.writeHead(404);
       res.end();

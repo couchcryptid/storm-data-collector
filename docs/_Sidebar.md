@@ -7,6 +7,7 @@
 - [[Configuration]]
 - [[Performance]]
 - [[Logging]]
+- [[Metrics]]
 
 **Development**
 - [[Code Quality]]

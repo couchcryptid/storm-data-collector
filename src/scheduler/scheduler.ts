@@ -5,6 +5,7 @@ import { buildCsvUrl } from '../csv/utils.js';
 import logger from '../logger.js';
 import { HTTP_STATUS_CODES, TIMING } from '../shared/constants.js';
 import { getErrorMessage, isHttpError } from '../shared/errors.js';
+import { metrics } from '../metrics.js';
 
 const RETRY_INTERVAL_MS = 5 * TIMING.MS_PER_MINUTE;
 const MAX_RETRY_ATTEMPTS = 3;
@@ -31,6 +32,9 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
   const url = buildCsvUrl(config.reportsBaseUrl, type, date);
 
   for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS + 1; attempt++) {
+    const endCsvTimer = metrics.csvFetchDurationSeconds.startTimer({
+      report_type: type,
+    });
     try {
       logger.info(
         { url, attempt, maxAttempts: MAX_RETRY_ATTEMPTS + 1 },
@@ -44,9 +48,12 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
         type,
       });
 
+      endCsvTimer();
       logger.info({ url, type }, 'CSV processing completed successfully');
       return true;
     } catch (err) {
+      endCsvTimer();
+
       if (!isHttpError(err)) {
         logger.error(
           { url, error: getErrorMessage(err) },
@@ -58,6 +65,7 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
       const statusCode = err.statusCode;
 
       if (isServerError(statusCode) && attempt <= MAX_RETRY_ATTEMPTS) {
+        metrics.retryTotal.inc({ report_type: type });
         logger.warn(
           {
             url,
@@ -99,6 +107,7 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
 }
 
 async function runJob() {
+  const endJobTimer = metrics.jobDurationSeconds.startTimer();
   logger.info('Starting CSV job');
 
   const date = new Date();
@@ -122,6 +131,9 @@ async function runJob() {
       failed++;
     }
   }
+
+  metrics.jobRunsTotal.inc({ status: failed > 0 ? 'failure' : 'success' });
+  endJobTimer();
 
   logger.info(
     { successful, failed, total: config.reportTypes.length },

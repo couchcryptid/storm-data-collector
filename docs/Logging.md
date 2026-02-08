@@ -104,3 +104,7 @@ const logger = pino({
 3. **Use consistent field names** - Use `url`, `statusCode`, `type`, `count` consistently
 4. **Log at decision points** - Log before retries, before publishing, on success/failure
 5. **Don't log sensitive data** - Avoid logging passwords, API keys, or PII
+
+## See Also
+
+- [[Metrics]] - Prometheus metrics for quantitative observability (counters, histograms)

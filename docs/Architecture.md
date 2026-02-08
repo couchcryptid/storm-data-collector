@@ -38,3 +38,13 @@ Example retry flow:
 Retries only apply to 500-599 server errors. Client errors (4xx) and network errors are not retried.
 
 See [[Configuration]] for cron scheduling configuration.
+
+## Observability
+
+The pipeline is instrumented with Prometheus metrics at key decision points:
+
+- **Job level**: Total runs (success/failure) and duration
+- **CSV level**: Fetch + process duration per report type, rows processed, rows published
+- **Retry level**: Counter incremented on each 5xx retry attempt
+
+All metrics are exposed via `GET /metrics` on the same HTTP server as the health check. See [[Metrics]] for the full metric reference.

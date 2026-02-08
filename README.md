@@ -35,10 +35,11 @@ See the [wiki](../../wiki) for full documentation:
 - [Performance](../../wiki/Performance) - Throughput estimates, memory usage, and scaling
 - [Code Quality](../../wiki/Code-Quality) - Testing, coverage, git hooks
 - [Logging](../../wiki/Logging) - Pino structured logging
+- [Metrics](../../wiki/Metrics) - Prometheus metrics and `/metrics` endpoint
 
 ## Tech Stack
 
-TypeScript, Node.js 24, KafkaJS, csv-parser, Croner, Vitest, Pino, Zod
+TypeScript, Node.js 24, KafkaJS, csv-parser, Croner, Vitest, Pino, Zod, prom-client
 
 ## License
 

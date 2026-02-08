@@ -46,7 +46,8 @@ docker buildx build -t storm-data-collector .  # Multi-platform
 - [[Configuration]] - Environment variables and Zod validation
 - [[Performance]] - Throughput estimates, memory usage, and scaling
 - [[Code Quality]] - Testing, coverage, git hooks
-- [[Logging]] - Pino structured logging and Chalk styling
+- [[Logging]] - Pino structured logging
+- [[Metrics]] - Prometheus metrics and `/metrics` endpoint
 
 ## Project Structure
 
@@ -69,7 +70,8 @@ src/
 ├── types/
 │   └── index.d.ts        # TypeScript type definitions
 ├── config.ts             # Configuration management with Zod validation
-├── health.ts             # Health check endpoint for Docker
+├── health.ts             # Health check and metrics endpoints
+├── metrics.ts            # Prometheus metrics (prom-client)
 ├── logger.ts             # Pino logging
 └── index.ts              # Application entry point
 ```
@@ -85,3 +87,4 @@ src/
 - ESLint + Prettier (code quality)
 - Zod (configuration validation)
 - Pino (logging)
+- prom-client (Prometheus metrics)

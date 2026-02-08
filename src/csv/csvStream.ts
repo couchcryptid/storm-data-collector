@@ -4,6 +4,7 @@ import { CsvToKafkaOptions } from '../types/index.js';
 import { getKafkaProducer } from '../kafka/client.js';
 import { publishBatch } from '../kafka/publisher.js';
 import logger from '../logger.js';
+import { metrics } from '../metrics.js';
 
 export class HttpError extends Error {
   constructor(
@@ -49,6 +50,10 @@ export async function csvStreamToKafka({
   }
 
   await producer.disconnect();
+
+  const reportType = type || 'unknown';
+  metrics.rowsProcessedTotal.inc({ report_type: reportType }, rows.length);
+  metrics.rowsPublishedTotal.inc({ report_type: reportType }, publishedRows);
 
   logger.info(
     { csvUrl, totalRows: rows.length, publishedRows },
