@@ -169,7 +169,7 @@ describe('Kafka Integration Tests', () => {
       State: 'TX',
       Lat: '31.02',
       Lon: '-98.44',
-      type: 'hail',
+      Type: 'hail',
     });
 
     expect(messages[1]).toMatchObject({
@@ -178,7 +178,7 @@ describe('Kafka Integration Tests', () => {
       Location: '3 SE Burleson',
       County: 'Johnson',
       State: 'TX',
-      type: 'hail',
+      Type: 'hail',
     });
 
     expect(messages[2]).toMatchObject({
@@ -187,7 +187,7 @@ describe('Kafka Integration Tests', () => {
       Location: 'Anthon',
       County: 'Woodbury',
       State: 'IA',
-      type: 'hail',
+      Type: 'hail',
     });
 
     console.log(
@@ -384,7 +384,7 @@ describe('Kafka Integration Tests', () => {
       Location: '2 N Mcalester',
       County: 'Pittsburg',
       State: 'OK',
-      type: 'torn',
+      Type: 'tornado',
     });
 
     expect(messages[1]).toMatchObject({
@@ -392,7 +392,7 @@ describe('Kafka Integration Tests', () => {
       F_Scale: 'UNK',
       Location: '2 ESE Ravenna',
       State: 'NE',
-      type: 'torn',
+      Type: 'tornado',
     });
 
     // Verify all messages have required fields
@@ -405,7 +405,7 @@ describe('Kafka Integration Tests', () => {
       expect(msg).toHaveProperty('Lat');
       expect(msg).toHaveProperty('Lon');
       expect(msg).toHaveProperty('Comments');
-      expect(msg.type).toBe('torn');
+      expect(msg.Type).toBe('tornado');
     });
 
     console.log(
@@ -477,13 +477,13 @@ describe('Kafka Integration Tests', () => {
     // Wait for messages
     await messagePromise;
 
-    // Assert: Verify type is included in messages
+    // Assert: Verify Type is included in messages
     expect(consumedMessages).toHaveLength(2);
 
     const messages = consumedMessages.map((msg) => JSON.parse(msg));
 
     messages.forEach((msg) => {
-      expect(msg.type).toBe(testType);
+      expect(msg.Type).toBe(testType);
       expect(msg).toHaveProperty('Time');
       expect(msg).toHaveProperty('Speed');
       expect(msg).toHaveProperty('Location');
@@ -502,7 +502,7 @@ describe('Kafka Integration Tests', () => {
       State: 'OK',
       Lat: '34.94',
       Lon: '-95.77',
-      type: testType,
+      Type: testType,
     });
 
     expect(messages[1]).toMatchObject({
@@ -511,7 +511,7 @@ describe('Kafka Integration Tests', () => {
       Location: '4 N Dow',
       County: 'Pittsburg',
       State: 'OK',
-      type: testType,
+      Type: testType,
     });
 
     console.log(
@@ -615,9 +615,9 @@ describe('Kafka Integration Tests', () => {
     const messages = consumedMessages.map((msg) => JSON.parse(msg));
 
     // Group by type
-    const tornMessages = messages.filter((msg) => msg.type === 'torn');
-    const hailMessages = messages.filter((msg) => msg.type === 'hail');
-    const windMessages = messages.filter((msg) => msg.type === 'wind');
+    const tornMessages = messages.filter((msg) => msg.Type === 'tornado');
+    const hailMessages = messages.filter((msg) => msg.Type === 'hail');
+    const windMessages = messages.filter((msg) => msg.Type === 'wind');
 
     expect(tornMessages).toHaveLength(2);
     expect(hailMessages).toHaveLength(2);
@@ -628,7 +628,7 @@ describe('Kafka Integration Tests', () => {
       expect(msg).toHaveProperty('Time');
       expect(msg).toHaveProperty('F_Scale');
       expect(msg).toHaveProperty('Location');
-      expect(msg.type).toBe('torn');
+      expect(msg.Type).toBe('tornado');
     });
 
     // Verify hail reports have correct fields
@@ -636,7 +636,7 @@ describe('Kafka Integration Tests', () => {
       expect(msg).toHaveProperty('Time');
       expect(msg).toHaveProperty('Size');
       expect(msg).toHaveProperty('Location');
-      expect(msg.type).toBe('hail');
+      expect(msg.Type).toBe('hail');
     });
 
     // Verify wind reports have correct fields
@@ -644,7 +644,7 @@ describe('Kafka Integration Tests', () => {
       expect(msg).toHaveProperty('Time');
       expect(msg).toHaveProperty('Speed');
       expect(msg).toHaveProperty('Location');
-      expect(msg.type).toBe('wind');
+      expect(msg.Type).toBe('wind');
     });
 
     console.log(

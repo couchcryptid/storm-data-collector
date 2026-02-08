@@ -23,7 +23,11 @@ export async function publishBatch({
 
   await producer.send({
     topic,
-    messages: batch.map((record) => ({ value: JSON.stringify(record) })),
+    messages: batch.map((record) => {
+      const { type, ...rest } = record;
+      const normalizedType = type === 'torn' ? 'tornado' : type;
+      return { value: JSON.stringify({ ...rest, Type: normalizedType }) };
+    }),
   });
 
   logger.info({ topic, count: batch.length }, 'Published batch to Kafka');

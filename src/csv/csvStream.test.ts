@@ -81,7 +81,7 @@ describe('csvStreamToKafka', () => {
       State: 'TX',
       Lat: '31.02',
       Lon: '-98.44',
-      type: 'hail',
+      Type: 'hail',
     });
     expect(parsed[1]).toMatchObject({
       Time: '1703',
@@ -91,7 +91,7 @@ describe('csvStreamToKafka', () => {
       State: 'TX',
       Lat: '32.5',
       Lon: '-97.29',
-      type: 'hail',
+      Type: 'hail',
     });
   });
 
@@ -120,7 +120,7 @@ describe('csvStreamToKafka', () => {
       Location: '2 N Mcalester',
       County: 'Pittsburg',
       State: 'OK',
-      type: 'torn',
+      Type: 'tornado',
     });
   });
 
@@ -149,7 +149,7 @@ describe('csvStreamToKafka', () => {
       Location: 'Mcalester',
       County: 'Pittsburg',
       State: 'OK',
-      type: 'wind',
+      Type: 'wind',
     });
   });
 
