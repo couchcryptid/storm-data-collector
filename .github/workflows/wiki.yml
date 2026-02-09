@@ -31,6 +31,10 @@ jobs:
             echo "docs_changed=true" >> "$GITHUB_OUTPUT"
           elif git diff --name-only HEAD~1 HEAD | grep -q '^docs/'; then
             echo "docs_changed=true" >> "$GITHUB_OUTPUT"
+          elif ls docs/*.md >/dev/null 2>&1 && \
+               ! git clone "https://github.com/${{ github.repository }}.wiki.git" /tmp/wiki 2>/dev/null; then
+            echo "Wiki not yet initialized but docs/ exists — first publish"
+            echo "docs_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "docs_changed=false" >> "$GITHUB_OUTPUT"
           fi
