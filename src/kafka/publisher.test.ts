@@ -30,7 +30,7 @@ describe('publishBatch', () => {
   });
 
   it('publishes batch and returns success', async () => {
-    const batch = [
+    const batch: Record<string, string>[] = [
       { type: 'hail', Location: '5 N Dallas', Size: '1.25' },
       { type: 'torn', Location: '2 S Austin', FScale: 'EF2' },
     ];
@@ -44,7 +44,7 @@ describe('publishBatch', () => {
     expect(result).toEqual({ successful: true, publishedCount: 2 });
     expect(mockProducer.send).toHaveBeenCalledOnce();
 
-    const call = mockProducer.send.mock.calls[0][0];
+    const call = mockProducer.send.mock.calls[0]![0];
     expect(call.topic).toBe('test-topic');
     expect(call.messages).toHaveLength(2);
 
