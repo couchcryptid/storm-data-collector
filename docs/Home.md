@@ -1,6 +1,6 @@
 # Storm Data Collector
 
-A TypeScript service that fetches NOAA storm report CSVs (hail, wind, tornado) on a cron schedule, converts them to JSON, and publishes them to Kafka. Built for the HailTrace platform.
+A TypeScript service that fetches NOAA storm report CSVs (hail, wind, tornado) on a cron schedule, converts them to JSON, and publishes them to Kafka. Part of the storm data pipeline.
 
 ## Pages
 
