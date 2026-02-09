@@ -54,4 +54,11 @@ export const metrics = {
     labelNames: ['report_type'] as const,
     registers: [register],
   }),
+
+  kafkaPublishRetriesTotal: new Counter({
+    name: `${PREFIX}kafka_publish_retries_total`,
+    help: 'Total number of Kafka publish retry attempts',
+    labelNames: ['topic'] as const,
+    registers: [register],
+  }),
 } as const;

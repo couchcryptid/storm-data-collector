@@ -4,7 +4,7 @@ A TypeScript service that fetches NOAA storm report CSVs (hail, wind, tornado) o
 
 ## Pages
 
-- [[Architecture]] -- Error handling, DLQ, and retry strategy
+- [[Architecture]] -- Error handling and retry strategy
 - [[Configuration]] -- Environment variables and Zod validation
 - [[Deployment]] -- Docker Compose setup and production considerations
 - [[Development]] -- Testing, coverage, linting, CI, and git hooks

@@ -10,11 +10,18 @@ vi.mock('../logger.js', () => ({
   },
 }));
 
+vi.mock('../metrics.js', () => ({
+  metrics: {
+    kafkaPublishRetriesTotal: { inc: vi.fn() },
+  },
+}));
+
 describe('publishBatch', () => {
   let mockProducer: { send: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     mockProducer = { send: vi.fn().mockResolvedValue(undefined) };
   });
 
@@ -29,7 +36,7 @@ describe('publishBatch', () => {
     expect(mockProducer.send).not.toHaveBeenCalled();
   });
 
-  it('publishes batch and returns success', async () => {
+  it('publishes batch and returns success on first attempt', async () => {
     const batch: Record<string, string>[] = [
       { type: 'hail', Location: '5 N Dallas', Size: '1.25' },
       { type: 'torn', Location: '2 S Austin', FScale: 'EF2' },
@@ -53,15 +60,69 @@ describe('publishBatch', () => {
     expect(parsed.Type).toBe('tornado');
   });
 
-  it('returns failure when producer throws', async () => {
-    mockProducer.send.mockRejectedValue(new Error('broker unavailable'));
+  it('retries on failure and succeeds on second attempt', async () => {
+    mockProducer.send
+      .mockRejectedValueOnce(new Error('broker unavailable'))
+      .mockResolvedValueOnce(undefined);
 
-    const result = await publishBatch({
+    const promise = publishBatch({
       producer: mockProducer as unknown as Producer,
       topic: 'test-topic',
       batch: [{ type: 'hail', Location: 'test' }],
     });
 
+    // Advance past the first retry delay (1000ms)
+    await vi.advanceTimersByTimeAsync(1000);
+    const result = await promise;
+
+    expect(result).toEqual({ successful: true, publishedCount: 1 });
+    expect(mockProducer.send).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails after exhausting all retry attempts', async () => {
+    mockProducer.send.mockRejectedValue(new Error('broker unavailable'));
+
+    const promise = publishBatch({
+      producer: mockProducer as unknown as Producer,
+      topic: 'test-topic',
+      batch: [{ type: 'hail', Location: 'test' }],
+    });
+
+    // Advance past retry delays: 1000ms + 2000ms
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(2000);
+    const result = await promise;
+
     expect(result).toEqual({ successful: false, publishedCount: 0 });
+    expect(mockProducer.send).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses exponential backoff between retries', async () => {
+    mockProducer.send
+      .mockRejectedValueOnce(new Error('fail 1'))
+      .mockRejectedValueOnce(new Error('fail 2'))
+      .mockResolvedValueOnce(undefined);
+
+    const promise = publishBatch({
+      producer: mockProducer as unknown as Producer,
+      topic: 'test-topic',
+      batch: [{ type: 'wind', Location: 'test' }],
+    });
+
+    // After first failure: 1000ms delay
+    expect(mockProducer.send).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(mockProducer.send).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    // Second attempt fires
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mockProducer.send).toHaveBeenCalledTimes(2);
+
+    // After second failure: 2000ms delay
+    await vi.advanceTimersByTimeAsync(2000);
+    const result = await promise;
+
+    expect(result).toEqual({ successful: true, publishedCount: 1 });
+    expect(mockProducer.send).toHaveBeenCalledTimes(3);
   });
 });

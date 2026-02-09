@@ -10,7 +10,7 @@ The project uses **prom-client** to expose Prometheus-compatible metrics via a `
 GET http://localhost:3000/metrics
 ```
 
-Returns metrics in Prometheus exposition format. Served by the same HTTP server as the `/health` endpoint (see [[Configuration]] for port details).
+Returns metrics in Prometheus exposition format. Served by the same HTTP server as the `/healthz` endpoint (see [[Configuration]] for port details).
 
 ## Custom Metrics
 
@@ -24,6 +24,7 @@ All custom metrics use the `storm_collector_` prefix.
 | `storm_collector_rows_processed_total` | `report_type` (`torn`, `hail`, `wind`) | Total CSV rows parsed |
 | `storm_collector_rows_published_total` | `report_type` | Total rows published to Kafka |
 | `storm_collector_retry_total` | `report_type` | Total retry attempts (5xx errors only) |
+| `storm_collector_kafka_publish_retries_total` | `topic` | Total Kafka publish retry attempts |
 
 ### Histograms
 
@@ -80,4 +81,5 @@ Metrics are defined in `src/metrics.ts` and instrumented in:
 
 - `src/scheduler/scheduler.ts` — job duration, job runs, retries
 - `src/csv/csvStream.ts` — rows processed, rows published
+- `src/kafka/publisher.ts` — Kafka publish retries
 - `src/health.ts` — `/metrics` endpoint

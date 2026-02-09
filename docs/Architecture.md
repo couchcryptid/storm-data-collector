@@ -10,15 +10,16 @@ The application implements a three-tier error handling system:
 - **404 errors**: Skip (CSV not published yet)
 - **400-499 errors**: Log and skip (client errors)
 
-### 2. Kafka Publishing
+### 2. Kafka Publishing (Exponential Backoff Retry)
 
 - **Success**: Messages published to Kafka topic
-- **Failure**: Logs error and stops processing
+- **Transient failure**: Retry with exponential backoff (1s, 2s, 4s) up to 3 attempts
+- **Permanent failure**: Logs error after all retries exhausted
 
 ### 3. Recovery
 
 ```
-CSV Fetch → HTTP Retry Loop (5min × 3 attempts) → Kafka Publish → Log Result
+CSV Fetch → HTTP Retry Loop (5min × 3 attempts) → Kafka Publish Retry Loop (exp backoff × 3 attempts) → Log Result
 ```
 
 ## Retry Strategy
@@ -46,5 +47,6 @@ The pipeline is instrumented with Prometheus metrics at key decision points:
 - **Job level**: Total runs (success/failure) and duration
 - **CSV level**: Fetch + process duration per report type, rows processed, rows published
 - **Retry level**: Counter incremented on each 5xx retry attempt
+- **Kafka publish level**: Counter incremented on each Kafka publish retry attempt
 
 All metrics are exposed via `GET /metrics` on the same HTTP server as the health check. See [[Metrics]] for the full metric reference.

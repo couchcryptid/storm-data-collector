@@ -64,12 +64,13 @@ All configuration is via environment variables (validated with Zod):
 
 | Metric                              | Type      | Labels        | Description                              |
 | ----------------------------------- | --------- | ------------- | ---------------------------------------- |
-| `collector_job_runs_total`          | Counter   | `status`      | Total number of scheduled job runs       |
-| `collector_rows_processed_total`    | Counter   | `report_type` | Total CSV rows processed                 |
-| `collector_rows_published_total`    | Counter   | `report_type` | Total rows published to Kafka            |
-| `collector_job_duration_seconds`    | Histogram | --            | Duration of scheduled job execution      |
-| `collector_csv_fetch_duration_seconds` | Histogram | `report_type` | Duration of CSV fetch and processing  |
-| `collector_retry_total`             | Counter   | `report_type` | Total number of retry attempts           |
+| `storm_collector_job_runs_total`          | Counter   | `status`      | Total number of scheduled job runs       |
+| `storm_collector_rows_processed_total`    | Counter   | `report_type` | Total CSV rows processed                 |
+| `storm_collector_rows_published_total`    | Counter   | `report_type` | Total rows published to Kafka            |
+| `storm_collector_job_duration_seconds`    | Histogram | --            | Duration of scheduled job execution      |
+| `storm_collector_csv_fetch_duration_seconds` | Histogram | `report_type` | Duration of CSV fetch and processing  |
+| `storm_collector_retry_total`             | Counter   | `report_type` | Total number of HTTP retry attempts      |
+| `storm_collector_kafka_publish_retries_total` | Counter | `topic`     | Total Kafka publish retry attempts       |
 
 ## Development
 
@@ -104,7 +105,7 @@ src/
 
 See the [project wiki](../../wiki) for detailed documentation:
 
-- [Architecture](../../wiki/Architecture) -- Error handling, DLQ, and retry strategy
+- [Architecture](../../wiki/Architecture) -- Error handling and retry strategy
 - [Configuration](../../wiki/Configuration) -- Environment variables and Zod validation
 - [Deployment](../../wiki/Deployment) -- Docker Compose setup and production considerations
 - [Development](../../wiki/Development) -- Testing, coverage, linting, CI, and git hooks
