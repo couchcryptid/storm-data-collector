@@ -1,5 +1,6 @@
 import { startScheduler } from './scheduler/scheduler.js';
 import { startHealthServer } from './health.js';
+import { disconnectProducer } from './kafka/client.js';
 import { config } from './config.js';
 import logger from './logger.js';
 
@@ -18,15 +19,25 @@ logger.info(
 
 const healthServer = startHealthServer(3000);
 
-startScheduler();
+const scheduler = startScheduler();
 
 logger.info('Scheduler is running');
 
-const shutdown = (signal: string) => {
+const shutdown = async (signal: string) => {
   logger.info({ signal }, 'Received signal, shutting down gracefully...');
+
+  scheduler.stop();
+
+  try {
+    await disconnectProducer();
+    logger.info('Kafka producer disconnected');
+  } catch (err) {
+    logger.error({ err }, 'Error disconnecting Kafka producer');
+  }
 
   healthServer.close(() => {
     logger.info('Health server closed');
+    logger.info('Shutdown complete');
     process.exit(0);
   });
 

@@ -51,7 +51,10 @@ vi.mock('croner', () => {
       constructor(_pattern: string, callback: () => void) {
         storedCronCallback = callback;
       }
-      stop() {}
+      // Intentionally empty — mock stub satisfies the Cron interface
+      stop() {
+        // no-op
+      }
     },
   };
 });

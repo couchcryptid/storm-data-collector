@@ -9,7 +9,7 @@ vi.mock('../logger.js', () => ({
   },
 }));
 
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 const mockSend = vi.fn();
 const mockConnect = vi.fn();
@@ -22,6 +22,11 @@ vi.mock('kafkajs', () => {
         send: mockSend,
         connect: mockConnect,
         disconnect: mockDisconnect,
+        on: vi.fn(),
+        events: {
+          CONNECT: 'producer.connect',
+          DISCONNECT: 'producer.disconnect',
+        },
       };
     }
   }
@@ -31,7 +36,7 @@ vi.mock('kafkajs', () => {
 });
 
 function mockFetch(csvData: string) {
-  (global.fetch as any).mockResolvedValue({
+  (globalThis.fetch as any).mockResolvedValue({
     ok: true,
     body: true,
     text: () => Promise.resolve(csvData),
@@ -169,7 +174,7 @@ describe('csvStreamToKafka', () => {
   });
 
   it('throws HttpError with 404 status code when CSV not found', async () => {
-    (global.fetch as any).mockResolvedValue({
+    (globalThis.fetch as any).mockResolvedValue({
       ok: false,
       status: 404,
       body: null,
@@ -191,7 +196,7 @@ describe('csvStreamToKafka', () => {
   });
 
   it('throws HttpError with 500 status code on server error', async () => {
-    (global.fetch as any).mockResolvedValue({
+    (globalThis.fetch as any).mockResolvedValue({
       ok: false,
       status: 500,
       body: null,
@@ -213,7 +218,7 @@ describe('csvStreamToKafka', () => {
   });
 
   it('throws HttpError with 400 status code on client error', async () => {
-    (global.fetch as any).mockResolvedValue({
+    (globalThis.fetch as any).mockResolvedValue({
       ok: false,
       status: 400,
       body: null,
@@ -234,7 +239,7 @@ describe('csvStreamToKafka', () => {
   });
 
   it('throws when res.body is null', async () => {
-    (global.fetch as any).mockResolvedValue({
+    (globalThis.fetch as any).mockResolvedValue({
       ok: true,
       body: null,
     });

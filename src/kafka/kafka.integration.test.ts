@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { KafkaContainer, StartedKafkaContainer } from '@testcontainers/kafka';
 import { Kafka, EachMessagePayload } from 'kafkajs';
 import { csvStreamToKafka } from '../csv/csvStream.js';
-import { createServer, Server } from 'http';
+import { createServer, Server } from 'node:http';
 
 describe('Kafka Integration Tests', () => {
   let kafkaContainer: StartedKafkaContainer;
@@ -159,7 +159,7 @@ describe('Kafka Integration Tests', () => {
     // Verify message content - sort by Time since Kafka doesn't guarantee order with batching
     const messages = consumedMessages
       .map((msg) => JSON.parse(msg))
-      .sort((a, b) => parseInt(a.Time) - parseInt(b.Time));
+      .sort((a, b) => Number.parseInt(a.Time) - Number.parseInt(b.Time));
 
     expect(messages[0]).toMatchObject({
       Time: '1510',
@@ -375,7 +375,7 @@ describe('Kafka Integration Tests', () => {
     // Verify messages are correctly formatted - sort by Time first
     const messages = consumedMessages
       .map((msg) => JSON.parse(msg))
-      .sort((a, b) => parseInt(a.Time) - parseInt(b.Time));
+      .sort((a, b) => Number.parseInt(a.Time) - Number.parseInt(b.Time));
 
     // Verify first few messages have expected structure
     expect(messages[0]).toMatchObject({

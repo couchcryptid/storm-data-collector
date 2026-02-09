@@ -1,4 +1,4 @@
-import { Readable } from 'stream';
+import { Readable } from 'node:stream';
 import csvParser from 'csv-parser';
 import { CsvToKafkaOptions } from '../types/index.js';
 import { getKafkaProducer } from '../kafka/client.js';

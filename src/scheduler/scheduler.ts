@@ -28,6 +28,51 @@ function isClientError(statusCode: number): boolean {
   );
 }
 
+function classifyHttpError(
+  err: { statusCode: number; message: string },
+  url: string,
+  type: string,
+  attempt: number
+): 'retry' | 'abort' {
+  const { statusCode } = err;
+
+  if (isServerError(statusCode) && attempt <= MAX_RETRY_ATTEMPTS) {
+    metrics.retryTotal.inc({ report_type: type });
+    logger.warn(
+      {
+        url,
+        statusCode,
+        delayMinutes: 5,
+        attempt,
+        maxAttempts: MAX_RETRY_ATTEMPTS,
+      },
+      'Server error, retrying'
+    );
+    return 'retry';
+  }
+
+  if (isServerError(statusCode)) {
+    logger.error(
+      { url, maxAttempts: MAX_RETRY_ATTEMPTS, statusCode },
+      'Max retry attempts reached'
+    );
+    return 'abort';
+  }
+
+  if (statusCode === HTTP_STATUS_CODES.NOT_FOUND) {
+    logger.warn({ url }, 'CSV not found (404), skipping');
+    return 'abort';
+  }
+
+  if (isClientError(statusCode)) {
+    logger.error({ url, statusCode, message: err.message }, 'Client error');
+    return 'abort';
+  }
+
+  logger.error({ url, statusCode, message: err.message }, 'HTTP error');
+  return 'abort';
+}
+
 async function processCsv(type: string, date: Date): Promise<boolean> {
   const url = buildCsvUrl(config.reportsBaseUrl, type, date);
 
@@ -62,43 +107,11 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
         return false;
       }
 
-      const statusCode = err.statusCode;
-
-      if (isServerError(statusCode) && attempt <= MAX_RETRY_ATTEMPTS) {
-        metrics.retryTotal.inc({ report_type: type });
-        logger.warn(
-          {
-            url,
-            statusCode,
-            delayMinutes: 5,
-            attempt,
-            maxAttempts: MAX_RETRY_ATTEMPTS,
-          },
-          'Server error, retrying'
-        );
+      const action = classifyHttpError(err, url, type, attempt);
+      if (action === 'retry') {
         await delay(RETRY_INTERVAL_MS);
         continue;
       }
-
-      if (isServerError(statusCode)) {
-        logger.error(
-          { url, maxAttempts: MAX_RETRY_ATTEMPTS, statusCode },
-          'Max retry attempts reached'
-        );
-        return false;
-      }
-
-      if (statusCode === HTTP_STATUS_CODES.NOT_FOUND) {
-        logger.warn({ url }, 'CSV not found (404), skipping');
-        return false;
-      }
-
-      if (isClientError(statusCode)) {
-        logger.error({ url, statusCode, message: err.message }, 'Client error');
-        return false;
-      }
-
-      logger.error({ url, statusCode, message: err.message }, 'HTTP error');
       return false;
     }
   }
@@ -141,15 +154,16 @@ async function runJob() {
   );
 }
 
-export function startScheduler() {
+export function startScheduler(): Cron {
   logger.info('Running initial job immediately');
   runJob().catch((err) => {
     logger.error({ error: getErrorMessage(err) }, 'Initial job failed');
   });
 
-  new Cron(config.cron.schedule, async () => {
+  const job = new Cron(config.cron.schedule, async () => {
     await runJob();
   });
 
   logger.info({ pattern: config.cron.schedule }, 'Scheduler started');
+  return job;
 }

@@ -1,1 +1,1 @@
-Storm Report Data Collection Service
+Storm Data Collector

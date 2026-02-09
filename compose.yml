@@ -16,53 +16,32 @@ services:
       kafka:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
     restart: unless-stopped
-    networks:
-      - kafka-network
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
-    container_name: zookeeper
-    env_file: .env.zookeeper
-    ports:
-      - "2181:2181"
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - kafka-network
 
   kafka:
-    image: confluentinc/cp-kafka:7.6.0
+    image: apache/kafka:3.7.0
     container_name: kafka
-    depends_on:
-      zookeeper:
-        condition: service_healthy
     env_file: .env.kafka
     ports:
-      - "9092:9092"
-    volumes:
-      - kafka-data:/var/lib/kafka/data
+      - "29092:29092"
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
       interval: 10s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 5
       start_period: 30s
     restart: unless-stopped
-    networks:
-      - kafka-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -80,14 +59,3 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
-    networks:
-      - kafka-network
-
-volumes:
-  zookeeper-data:
-  zookeeper-logs:
-  kafka-data:
-
-networks:
-  kafka-network:
-    driver: bridge

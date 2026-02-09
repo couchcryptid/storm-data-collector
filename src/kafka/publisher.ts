@@ -21,14 +21,22 @@ export async function publishBatch({
     return { successful: true, publishedCount: 0 };
   }
 
-  await producer.send({
-    topic,
-    messages: batch.map((record) => {
-      const { type, ...rest } = record;
-      const normalizedType = type === 'torn' ? 'tornado' : type;
-      return { value: JSON.stringify({ ...rest, Type: normalizedType }) };
-    }),
-  });
+  try {
+    await producer.send({
+      topic,
+      messages: batch.map((record) => {
+        const { type, ...rest } = record;
+        const normalizedType = type === 'torn' ? 'tornado' : type;
+        return { value: JSON.stringify({ ...rest, Type: normalizedType }) };
+      }),
+    });
+  } catch (err) {
+    logger.error(
+      { topic, count: batch.length, err },
+      'Failed to publish batch to Kafka'
+    );
+    return { successful: false, publishedCount: 0 };
+  }
 
   logger.info({ topic, count: batch.length }, 'Published batch to Kafka');
 

@@ -1,7 +1,10 @@
 name: Release and Publish
 
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types:
+      - completed
     branches:
       - main
   workflow_dispatch:
@@ -10,6 +13,7 @@ jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
       issues: write
