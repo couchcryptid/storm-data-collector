@@ -29,6 +29,9 @@ export async function publishBatch({
     return { successful: true, publishedCount: 0 };
   }
 
+  // NOAA CSV filenames use the abbreviation "torn" for tornado reports.
+  // Normalize to "tornado" for downstream consumers and capitalize field names
+  // to match the collector's JSON wire format convention.
   const messages = batch.map((record) => {
     const { type, ...rest } = record;
     const normalizedType = type === 'torn' ? 'tornado' : type;

@@ -1,5 +1,28 @@
 # Architecture
 
+## Data Source
+
+The collector fetches daily severe weather report CSVs from the [NOAA Storm Prediction Center](https://www.spc.noaa.gov/climo/reports/) (SPC). SPC publishes three CSV files per day, one per event type:
+
+| NOAA Filename Suffix | Report Type | Magnitude Column | Magnitude Unit |
+|----------------------|-------------|------------------|----------------|
+| `_rpts_hail.csv` | hail | `Size` | Hundredths of inches (e.g. 125 = 1.25") |
+| `_rpts_torn.csv` | tornado | `F_Scale` | Enhanced Fujita scale (EF0-EF5 or "UNK") |
+| `_rpts_wind.csv` | wind | `Speed` | Miles per hour (or "UNK") |
+
+All three types share common columns: `Time` (HHMM 24-hour), `Location` (NWS relative format, e.g. "8 ESE Chappel"), `County`, `State`, `Lat`, `Lon`, `Comments`.
+
+**Key transformations performed by the collector:**
+
+- `torn` -> `tornado`: NOAA's filename abbreviation is normalized to the full event type name
+- A `Type` field is injected into each JSON record (`hail`, `wind`, or `tornado`)
+- CSV column names are preserved as-is with capitalized keys (e.g. `Time`, `Size`, `Location`)
+- All values remain as strings -- numeric parsing happens in the downstream ETL service
+
+**Publishing schedule:** SPC typically publishes CSVs for the current day by early afternoon CT. The cron schedule should be configured accordingly (default: every 15 minutes). 404 responses indicate the CSV isn't published yet and are silently skipped.
+
+For the full data flow from CSV to GraphQL, see the [system Data Flow documentation](https://github.com/couchcryptid/storm-data-system/wiki/Data-Flow).
+
 ## Error Handling Flow
 
 The application implements a three-tier error handling system:
