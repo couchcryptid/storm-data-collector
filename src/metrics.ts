@@ -9,7 +9,7 @@ export const register = new Registry();
 
 collectDefaultMetrics({ register });
 
-const PREFIX = 'collector_';
+const PREFIX = 'storm_collector_';
 
 export const metrics = {
   jobRunsTotal: new Counter({

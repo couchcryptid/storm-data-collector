@@ -44,6 +44,3 @@ coverage/
 .cache/
 tmp/
 temp/
-
-# DLQ Fallback Files
-data/dlq/*.json
