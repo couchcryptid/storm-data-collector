@@ -1,5 +1,7 @@
 # Architecture
 
+![Architecture](architecture.excalidraw.svg)
+
 ## Data Source
 
 The collector fetches daily severe weather report CSVs from the [NOAA Storm Prediction Center](https://www.spc.noaa.gov/climo/reports/) (SPC). SPC publishes three CSV files per day, one per event type:
@@ -24,6 +26,8 @@ All three types share common columns: `Time` (HHMM 24-hour), `Location` (NWS rel
 For the full data flow from CSV to GraphQL, see the [system Data Flow documentation](https://github.com/couchcryptid/storm-data-system/wiki/Data-Flow).
 
 ## Error Handling Flow
+
+![Error Handling Flow](error-handling-flow.excalidraw.svg)
 
 The application implements a three-tier error handling system:
 

@@ -4,6 +4,8 @@ This page analyzes the theoretical throughput and resource characteristics of th
 
 ## Pipeline Overview
 
+![Pipeline Throughput](pipeline-throughput.excalidraw.svg)
+
 Each scheduled job runs a three-stage pipeline per report type:
 
 ```
