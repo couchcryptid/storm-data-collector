@@ -49,7 +49,11 @@ describe('health server', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toBe('application/json');
 
-      const body = await res.json();
+      const body = (await res.json()) as {
+        status: string;
+        timestamp: string;
+        uptime: number;
+      };
       expect(body.status).toBe('healthy');
       expect(body.timestamp).toBeDefined();
       expect(body.uptime).toBeTypeOf('number');
@@ -64,7 +68,7 @@ describe('health server', () => {
 
       expect(res.status).toBe(200);
 
-      const body = await res.json();
+      const body = (await res.json()) as { status: string };
       expect(body.status).toBe('ready');
     });
 
@@ -75,7 +79,7 @@ describe('health server', () => {
 
       expect(res.status).toBe(503);
 
-      const body = await res.json();
+      const body = (await res.json()) as { status: string; error: string };
       expect(body.status).toBe('not ready');
       expect(body.error).toBe('kafka producer not connected');
     });
