@@ -1,46 +1,20 @@
 # Configuration
 
-All configuration is managed via environment variables, validated at startup using **Zod**.
+All configuration is via environment variables, validated at startup using **Zod**.
 
 ## Environment Variables
 
-Create a `.env` file in the root directory:
-
-```env
-# Node Environment
-NODE_ENV=development
-
-# Kafka Configuration
-# For Docker: Use kafka:29092 (internal network)
-# For local: Use localhost:9092
-KAFKA_BROKERS=kafka:29092
-KAFKA_CLIENT_ID=storm-collector
-KAFKA_TOPIC=raw-weather-reports
-
-# CSV Data Source
-REPORTS_BASE_URL=https://example.com/
-REPORT_TYPES=torn,wind,hail
-
-# Cron Configuration
-CRON_SCHEDULE="0 0 * * *"
-
-# Logging
-LOG_LEVEL=info  # fatal, error, warn, info, debug
-```
-
-## Zod Validation Rules
-
 The schema is defined in `src/config.ts`:
 
-| Variable           | Type   | Default                | Constraints                      |
-| ------------------ | ------ | ---------------------- | -------------------------------- |
-| `KAFKA_BROKERS`    | String | `localhost:9092`       | Comma-separated broker addresses |
-| `KAFKA_CLIENT_ID`  | String | `csv-producer`         | Unique client identifier         |
-| `KAFKA_TOPIC`      | String | `raw-weather-reports`  | Target Kafka topic               |
-| `REPORTS_BASE_URL` | URL    | `https://example.com/` | Must be valid URL                |
-| `REPORT_TYPES`     | String | `torn,hail,wind`       | Comma-separated types            |
-| `CRON_SCHEDULE`    | String | `0 0 * * *`            | Valid cron expression            |
-| `LOG_LEVEL`        | String | `info`                 | fatal, error, warn, info, debug  |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KAFKA_BROKERS` | `localhost:9092` | Kafka broker addresses (comma-separated) |
+| `KAFKA_CLIENT_ID` | `csv-producer` | Unique client identifier |
+| `KAFKA_TOPIC` | `raw-weather-reports` | Target Kafka topic |
+| `REPORTS_BASE_URL` | `https://example.com/` | NOAA CSV base URL (must be valid URL) |
+| `REPORT_TYPES` | `torn,hail,wind` | CSV report types to fetch (comma-separated) |
+| `CRON_SCHEDULE` | `0 0 * * *` | Cron expression for fetch schedule |
+| `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug` |
 
 ## Validation Errors
 
