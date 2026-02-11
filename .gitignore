@@ -37,6 +37,10 @@ coverage/
 # Docker
 .dockerignore
 
+# SonarLint (keep connectedMode tracked)
+.sonarlint/*
+!.sonarlint/connectedMode.json
+
 # Misc
 *.pid
 *.seed
