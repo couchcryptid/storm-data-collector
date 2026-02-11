@@ -2,6 +2,9 @@ import { Producer } from 'kafkajs';
 import logger from '../logger.js';
 import { metrics } from '../metrics.js';
 
+// Kafka publish retries use fast exponential backoff (1s, 2s, 4s) since broker
+// reconnects are typically quick. Compare with CSV fetch retries in scheduler.ts
+// which use slow 5-minute fixed delays for the slower NOAA recovery cycle.
 const MAX_PUBLISH_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 

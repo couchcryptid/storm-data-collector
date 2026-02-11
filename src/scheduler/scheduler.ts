@@ -7,6 +7,10 @@ import { HTTP_STATUS_CODES, TIMING } from '../shared/constants.js';
 import { getErrorMessage, isHttpError } from '../shared/errors.js';
 import { metrics } from '../metrics.js';
 
+// CSV fetching uses fixed 5-minute delays between retries because NOAA servers
+// are slow to recover and there's no urgency — the cron job runs periodically anyway.
+// Compare with Kafka publish retries in publisher.ts which use fast exponential
+// backoff (1s, 2s, 4s) since Kafka reconnects are typically quick.
 const RETRY_INTERVAL_MS = 5 * TIMING.MS_PER_MINUTE;
 const MAX_RETRY_ATTEMPTS = 3;
 
