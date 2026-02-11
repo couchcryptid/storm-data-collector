@@ -78,11 +78,6 @@ docker run -p 3000:3000 \
 | `.env.kafka`   | `kafka` container          | Kafka KRaft broker settings (listeners, controller, replication) |
 | `.env.kafka-ui`| `kafka-ui` container       | Kafka UI connection settings                       |
 
-## Production Considerations
+## Production
 
-- Replace the single-node Kafka setup with a managed Kafka service or multi-broker cluster
-- Set `KAFKA_AUTO_CREATE_TOPICS_ENABLE=false` and pre-create topics with appropriate partition counts and replication factors
-- Set `LOG_LEVEL=warn` for production to reduce noise
-- Monitor the Prometheus metrics endpoint with your observability stack
-- The cron schedule (`CRON_SCHEDULE`) should be set to run after NOAA publishes daily reports (typically after midnight UTC)
-- The service is stateless and idempotent -- safe to restart or run multiple instances
+For cloud deployment options and cost analysis, see the [system Architecture wiki](https://github.com/couchcryptid/storm-data-system/wiki/Architecture#gcp-cloud-cost-analysis). The cron schedule (`CRON_SCHEDULE`) should be set to run after NOAA publishes daily reports (typically after midnight UTC). The service is stateless and idempotent -- safe to restart or run multiple instances.

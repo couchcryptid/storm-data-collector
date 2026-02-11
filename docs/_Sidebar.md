@@ -5,6 +5,3 @@
 - [[Configuration]]
 - [[Deployment]]
 - [[Development]]
-- [[Performance]]
-- [[Logging]]
-- [[Metrics]]

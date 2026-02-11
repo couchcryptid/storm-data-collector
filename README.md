@@ -105,10 +105,7 @@ src/
 
 See the [project wiki](../../wiki) for detailed documentation:
 
-- [Architecture](../../wiki/Architecture) -- Error handling and retry strategy
+- [Architecture](../../wiki/Architecture) -- Data source, error handling, retry strategy, and capacity
 - [Configuration](../../wiki/Configuration) -- Environment variables and Zod validation
-- [Deployment](../../wiki/Deployment) -- Docker Compose setup and production considerations
-- [Development](../../wiki/Development) -- Testing, coverage, linting, CI, and git hooks
-- [Performance](../../wiki/Performance) -- Throughput estimates, memory usage, and scaling
-- [Logging](../../wiki/Logging) -- Pino structured logging
-- [Metrics](../../wiki/Metrics) -- Prometheus metrics and `/metrics` endpoint
+- [Deployment](../../wiki/Deployment) -- Docker Compose setup and Docker image
+- [Development](../../wiki/Development) -- Testing, coverage, linting, CI, git hooks, logging, and metrics

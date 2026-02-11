@@ -4,10 +4,7 @@ A TypeScript service that fetches NOAA storm report CSVs (hail, wind, tornado) o
 
 ## Pages
 
-- [[Architecture]] -- Error handling and retry strategy
+- [[Architecture]] -- Data source, error handling, retry strategy, and capacity
 - [[Configuration]] -- Environment variables and Zod validation
-- [[Deployment]] -- Docker Compose setup and production considerations
-- [[Development]] -- Testing, coverage, linting, CI, and git hooks
-- [[Performance]] -- Throughput estimates, memory usage, and scaling
-- [[Logging]] -- Pino structured logging
-- [[Metrics]] -- Prometheus metrics and `/metrics` endpoint
+- [[Deployment]] -- Docker Compose setup and Docker image
+- [[Development]] -- Testing, coverage, linting, CI, git hooks, logging, and metrics

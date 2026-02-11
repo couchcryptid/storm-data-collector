@@ -122,3 +122,23 @@ The `.github/workflows/ci.yml` workflow runs on pushes and pull requests to `mai
 | `build` | `npm run build` (compile check) |
 
 A separate `release.yml` workflow (triggered by CI success on `main`) handles versioning, GitHub releases, and Docker image publishing.
+
+## Logging
+
+The project uses [Pino](https://getpino.io/) for structured logging. All log calls should pass context as an object first argument:
+
+```typescript
+logger.info({ url: csvUrl, type: 'hail', statusCode: 200 }, 'CSV fetch successful');
+```
+
+Control verbosity via `LOG_LEVEL` (see [[Configuration]]). In development, `pino-pretty` provides color-coded human-readable output. In production, logs are emitted as JSON.
+
+## Metrics
+
+All custom Prometheus metrics use the `storm_collector_` prefix and are exposed via `GET /metrics`. Metrics are defined in `src/metrics.ts` and instrumented in:
+
+- `src/scheduler/scheduler.ts` -- job duration, job runs, retries
+- `src/csv/csvStream.ts` -- rows processed, rows published
+- `src/kafka/publisher.ts` -- Kafka publish retries
+
+See the README for the full metric reference table. Default Node.js runtime metrics (`nodejs_*`, `process_*`) are also collected automatically by prom-client.
