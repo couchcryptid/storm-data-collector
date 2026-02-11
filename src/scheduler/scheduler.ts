@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { buildCsvUrl } from '../csv/utils.js';
 import logger from '../logger.js';
 import { HTTP_STATUS_CODES, TIMING } from '../shared/constants.js';
+import { delay } from '../shared/delay.js';
 import { getErrorMessage, isHttpError } from '../shared/errors.js';
 import { metrics } from '../metrics.js';
 
@@ -13,10 +14,6 @@ import { metrics } from '../metrics.js';
 // backoff (1s, 2s, 4s) since Kafka reconnects are typically quick.
 const RETRY_INTERVAL_MS = 5 * TIMING.MS_PER_MINUTE;
 const MAX_RETRY_ATTEMPTS = 3;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function isServerError(statusCode: number): boolean {
   return (

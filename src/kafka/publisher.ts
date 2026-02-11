@@ -1,6 +1,7 @@
 import { Producer } from 'kafkajs';
 import logger from '../logger.js';
 import { metrics } from '../metrics.js';
+import { delay } from '../shared/delay.js';
 
 // Kafka publish retries use fast exponential backoff (1s, 2s, 4s) since broker
 // reconnects are typically quick. Compare with CSV fetch retries in scheduler.ts
@@ -17,10 +18,6 @@ export interface PublishBatchOptions {
 export interface PublishBatchResult {
   successful: boolean;
   publishedCount: number;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function publishBatch({
