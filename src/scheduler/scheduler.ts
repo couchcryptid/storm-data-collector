@@ -1,5 +1,5 @@
 import { Cron } from 'croner';
-import { csvStreamToKafka } from '../csv/csvStream.js';
+import { csvStreamToKafka } from '../csv/csv-stream.js';
 import { config } from '../config.js';
 import { buildCsvUrl } from '../csv/utils.js';
 import logger from '../logger.js';
@@ -94,7 +94,7 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
         csvUrl: url,
         topic: config.topic,
         kafka: config.kafka,
-        type,
+        eventType: type,
       });
 
       endCsvTimer();

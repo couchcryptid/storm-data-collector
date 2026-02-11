@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { csvStreamToKafka, CsvStreamOptions, HttpError } from './csvStream.js';
+import { csvStreamToKafka, CsvStreamOptions, HttpError } from './csv-stream.js';
 
 vi.mock('../logger.js', () => ({
   default: {
@@ -50,7 +50,7 @@ function buildOptions(
     csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_hail.csv',
     topic: 'raw-weather-reports',
     kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
-    type: 'hail',
+    eventType: 'hail',
     ...overrides,
   };
 }
@@ -60,7 +60,7 @@ describe('csvStreamToKafka', () => {
     vi.clearAllMocks();
   });
 
-  it('parses real hail report CSV and injects type correctly', async () => {
+  it('parses real hail report CSV and injects eventType correctly', async () => {
     const csvData =
       'Time,Size,Location,County,State,Lat,Lon,Comments\n' +
       '1510,125,8 ESE Chappel,San Saba,TX,31.02,-98.44,1.25 inch hail reported at Colorado Bend State Park. (SJT)\n' +
@@ -86,7 +86,7 @@ describe('csvStreamToKafka', () => {
       State: 'TX',
       Lat: '31.02',
       Lon: '-98.44',
-      Type: 'hail',
+      EventType: 'hail',
     });
     expect(parsed[1]).toMatchObject({
       Time: '1703',
@@ -96,7 +96,7 @@ describe('csvStreamToKafka', () => {
       State: 'TX',
       Lat: '32.5',
       Lon: '-97.29',
-      Type: 'hail',
+      EventType: 'hail',
     });
   });
 
@@ -111,7 +111,7 @@ describe('csvStreamToKafka', () => {
     await csvStreamToKafka(
       buildOptions({
         csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_torn.csv',
-        type: 'torn',
+        eventType: 'torn',
       })
     );
 
@@ -125,7 +125,7 @@ describe('csvStreamToKafka', () => {
       Location: '2 N Mcalester',
       County: 'Pittsburg',
       State: 'OK',
-      Type: 'tornado',
+      EventType: 'tornado',
     });
   });
 
@@ -140,7 +140,7 @@ describe('csvStreamToKafka', () => {
     await csvStreamToKafka(
       buildOptions({
         csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_wind.csv',
-        type: 'wind',
+        eventType: 'wind',
       })
     );
 
@@ -154,7 +154,7 @@ describe('csvStreamToKafka', () => {
       Location: 'Mcalester',
       County: 'Pittsburg',
       State: 'OK',
-      Type: 'wind',
+      EventType: 'wind',
     });
   });
 
@@ -164,7 +164,7 @@ describe('csvStreamToKafka', () => {
     await csvStreamToKafka(
       buildOptions({
         csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_empty.csv',
-        type: 'empty',
+        eventType: 'empty',
       })
     );
 
@@ -184,7 +184,7 @@ describe('csvStreamToKafka', () => {
       await csvStreamToKafka(
         buildOptions({
           csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_missing.csv',
-          type: 'missing',
+          eventType: 'missing',
         })
       );
       expect.fail('Should have thrown an error');
@@ -206,7 +206,7 @@ describe('csvStreamToKafka', () => {
       await csvStreamToKafka(
         buildOptions({
           csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_error.csv',
-          type: 'error',
+          eventType: 'error',
         })
       );
       expect.fail('Should have thrown an error');
@@ -228,7 +228,7 @@ describe('csvStreamToKafka', () => {
       await csvStreamToKafka(
         buildOptions({
           csvUrl: 'https://www.spc.noaa.gov/climo/reports/260206_bad.csv',
-          type: 'bad',
+          eventType: 'bad',
         })
       );
       expect.fail('Should have thrown an error');

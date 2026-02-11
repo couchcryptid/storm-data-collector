@@ -38,8 +38,8 @@ describe('publishBatch', () => {
 
   it('publishes batch and returns success on first attempt', async () => {
     const batch: Record<string, string>[] = [
-      { type: 'hail', Location: '5 N Dallas', Size: '1.25' },
-      { type: 'torn', Location: '2 S Austin', FScale: 'EF2' },
+      { eventType: 'hail', Location: '5 N Dallas', Size: '1.25' },
+      { eventType: 'torn', Location: '2 S Austin', FScale: 'EF2' },
     ];
 
     const result = await publishBatch({
@@ -57,7 +57,7 @@ describe('publishBatch', () => {
 
     // Verify torn -> tornado normalization
     const parsed = JSON.parse(call.messages[1].value);
-    expect(parsed.Type).toBe('tornado');
+    expect(parsed.EventType).toBe('tornado');
   });
 
   it('retries on failure and succeeds on second attempt', async () => {
@@ -68,7 +68,7 @@ describe('publishBatch', () => {
     const promise = publishBatch({
       producer: mockProducer as unknown as Producer,
       topic: 'test-topic',
-      batch: [{ type: 'hail', Location: 'test' }],
+      batch: [{ eventType: 'hail', Location: 'test' }],
     });
 
     // Advance past the first retry delay (1000ms)
@@ -85,7 +85,7 @@ describe('publishBatch', () => {
     const promise = publishBatch({
       producer: mockProducer as unknown as Producer,
       topic: 'test-topic',
-      batch: [{ type: 'hail', Location: 'test' }],
+      batch: [{ eventType: 'hail', Location: 'test' }],
     });
 
     // Advance past retry delays: 1000ms + 2000ms
@@ -106,7 +106,7 @@ describe('publishBatch', () => {
     const promise = publishBatch({
       producer: mockProducer as unknown as Producer,
       topic: 'test-topic',
-      batch: [{ type: 'wind', Location: 'test' }],
+      batch: [{ eventType: 'wind', Location: 'test' }],
     });
 
     // After first failure: 1000ms delay

@@ -33,12 +33,12 @@ export async function publishBatch({
   }
 
   // NOAA CSV filenames use the abbreviation "torn" for tornado reports.
-  // Normalize to "tornado" for downstream consumers and capitalize field names
-  // to match the collector's JSON wire format convention.
+  // Normalize to "tornado" for downstream consumers. The EventType field
+  // matches the ETL's RawCSVRecord.EventType JSON tag.
   const messages = batch.map((record) => {
-    const { type, ...rest } = record;
-    const normalizedType = type === 'torn' ? 'tornado' : type;
-    return { value: JSON.stringify({ ...rest, Type: normalizedType }) };
+    const { eventType, ...rest } = record;
+    const normalizedType = eventType === 'torn' ? 'tornado' : eventType;
+    return { value: JSON.stringify({ ...rest, EventType: normalizedType }) };
   });
 
   for (let attempt = 1; attempt <= MAX_PUBLISH_RETRIES; attempt++) {

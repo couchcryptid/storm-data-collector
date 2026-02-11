@@ -138,7 +138,7 @@ Control verbosity via `LOG_LEVEL` (see [[Configuration]]). In development, `pino
 All custom Prometheus metrics use the `storm_collector_` prefix and are exposed via `GET /metrics`. Metrics are defined in `src/metrics.ts` and instrumented in:
 
 - `src/scheduler/scheduler.ts` -- job duration, job runs, retries
-- `src/csv/csvStream.ts` -- rows processed, rows published
+- `src/csv/csv-stream.ts` -- rows processed, rows published
 - `src/kafka/publisher.ts` -- Kafka publish retries
 
 See the README for the full metric reference table. Default Node.js runtime metrics (`nodejs_*`, `process_*`) are also collected automatically by prom-client.

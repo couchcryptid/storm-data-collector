@@ -27,7 +27,7 @@ export async function csvStreamToKafka({
   csvUrl,
   topic,
   kafka,
-  type,
+  eventType,
 }: CsvToKafkaOptions): Promise<CsvStreamResult> {
   const producer = getKafkaProducer(kafka);
   await producer.connect();
@@ -41,7 +41,7 @@ export async function csvStreamToKafka({
   if (!response.body) throw new Error(`No response body for CSV: ${csvUrl}`);
 
   const text = await response.text();
-  const rows = await parseCsv(text, type);
+  const rows = await parseCsv(text, eventType);
 
   let publishedRows = 0;
   if (rows.length > 0) {
@@ -51,7 +51,7 @@ export async function csvStreamToKafka({
 
   await producer.disconnect();
 
-  const reportType = type || 'unknown';
+  const reportType = eventType || 'unknown';
   metrics.rowsProcessedTotal.inc({ report_type: reportType }, rows.length);
   metrics.rowsPublishedTotal.inc({ report_type: reportType }, publishedRows);
 
@@ -65,13 +65,13 @@ export async function csvStreamToKafka({
 
 function parseCsv(
   text: string,
-  type?: string
+  eventType?: string
 ): Promise<Record<string, string>[]> {
   return new Promise((resolve, reject) => {
     const rows: Record<string, string>[] = [];
     Readable.from(text)
       .pipe(csvParser())
-      .on('data', (row) => rows.push({ ...row, type }))
+      .on('data', (row) => rows.push({ ...row, eventType }))
       .on('end', () => resolve(rows))
       .on('error', reject);
   });

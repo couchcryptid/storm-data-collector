@@ -7,5 +7,5 @@ export interface CsvToKafkaOptions {
   csvUrl: string;
   topic: string;
   kafka: KafkaConfig;
-  type?: string;
+  eventType?: string;
 }

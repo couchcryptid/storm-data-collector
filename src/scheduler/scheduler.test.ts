@@ -8,7 +8,7 @@ vi.mock('../logger.js', () => ({
   },
 }));
 
-vi.mock('../csv/csvStream.js', () => {
+vi.mock('../csv/csv-stream.js', () => {
   class HttpError extends Error {
     constructor(
       message: string,
@@ -60,7 +60,7 @@ vi.mock('croner', () => {
 });
 
 import { startScheduler } from './scheduler.js';
-import { csvStreamToKafka, HttpError } from '../csv/csvStream.js';
+import { csvStreamToKafka, HttpError } from '../csv/csv-stream.js';
 import logger from '../logger.js';
 
 describe('startScheduler', () => {
@@ -112,8 +112,8 @@ describe('startScheduler', () => {
 
   it('retries on 500 error with 5-minute delay', async () => {
     let callCount = 0;
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         callCount++;
         if (callCount <= 2) {
           const error = new HttpError('Server Error', 500);
@@ -137,7 +137,7 @@ describe('startScheduler', () => {
 
     // Initial + 2 retries = 3 calls for hail
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'hail'
+      (call: any) => call[0].eventType === 'hail'
     );
     expect(hailCalls.length).toBe(3);
 
@@ -150,8 +150,8 @@ describe('startScheduler', () => {
   });
 
   it('stops retrying after max attempts on 500 errors', async () => {
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         const error = new HttpError('Server Error', 500);
         throw error;
       }
@@ -171,7 +171,7 @@ describe('startScheduler', () => {
     await jobPromise;
 
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'hail'
+      (call: any) => call[0].eventType === 'hail'
     );
 
     // Should be 4 total: initial + 3 retries
@@ -185,8 +185,8 @@ describe('startScheduler', () => {
   });
 
   it('does not retry on 404 error', async () => {
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         const error = new HttpError('Not Found', 404);
         throw error;
       }
@@ -197,7 +197,7 @@ describe('startScheduler', () => {
     await vi.runAllTimersAsync();
 
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'hail'
+      (call: any) => call[0].eventType === 'hail'
     );
 
     expect(hailCalls.length).toBe(1);
@@ -209,8 +209,8 @@ describe('startScheduler', () => {
   });
 
   it('logs error on 400 client error without retry', async () => {
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         const error = new HttpError('Bad Request', 400);
         throw error;
       }
@@ -221,7 +221,7 @@ describe('startScheduler', () => {
     await vi.runAllTimersAsync();
 
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'hail'
+      (call: any) => call[0].eventType === 'hail'
     );
 
     expect(hailCalls.length).toBe(1);
@@ -234,12 +234,12 @@ describe('startScheduler', () => {
   });
 
   it('handles mixed success and failures', async () => {
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         const error = new HttpError('Not Found', 404);
         throw error;
       }
-      if (type === 'wind') {
+      if (eventType === 'wind') {
         const error = new HttpError('Server Error', 500);
         throw error;
       }
@@ -259,18 +259,18 @@ describe('startScheduler', () => {
     await jobPromise;
 
     const tornCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'torn'
+      (call: any) => call[0].eventType === 'torn'
     );
     expect(tornCalls.length).toBe(1);
 
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'hail'
+      (call: any) => call[0].eventType === 'hail'
     );
     expect(hailCalls.length).toBe(1);
 
     // Wind should retry on 500 (4 calls: initial + 3 retries)
     const windCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'wind'
+      (call: any) => call[0].eventType === 'wind'
     );
     expect(windCalls.length).toBe(4);
 
@@ -330,8 +330,8 @@ describe('startScheduler', () => {
 
   it('includes attempt numbers in logs', async () => {
     let callCount = 0;
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         callCount++;
         if (callCount <= 2) {
           const error = new HttpError('Server Error', 500);
@@ -361,8 +361,8 @@ describe('startScheduler', () => {
   });
 
   it('handles network errors without retry', async () => {
-    (csvStreamToKafka as any).mockImplementation(({ type }: any) => {
-      if (type === 'hail') {
+    (csvStreamToKafka as any).mockImplementation(({ eventType }: any) => {
+      if (eventType === 'hail') {
         throw new Error('Network timeout');
       }
       return Promise.resolve();
@@ -372,7 +372,7 @@ describe('startScheduler', () => {
     await vi.runAllTimersAsync();
 
     const hailCalls = (csvStreamToKafka as any).mock.calls.filter(
-      (call: any) => call[0].type === 'hail'
+      (call: any) => call[0].eventType === 'hail'
     );
 
     expect(hailCalls.length).toBe(1);
