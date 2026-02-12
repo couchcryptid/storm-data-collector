@@ -1,13 +1,13 @@
 // src/kafka/kafka.integration.test.ts
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { KafkaContainer, StartedKafkaContainer } from '@testcontainers/kafka';
-import { Kafka, EachMessagePayload } from 'kafkajs';
+import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { csvStreamToKafka } from '../csv/csv-stream.js';
 import { createServer, Server } from 'node:http';
 
 describe('Kafka Integration Tests', () => {
   let kafkaContainer: StartedKafkaContainer;
-  let kafka: Kafka;
+  let kafka: InstanceType<typeof KafkaJS.Kafka>;
   let httpServer: Server;
   let httpServerUrl: string;
   const testGroupId = 'test-consumer-group';
@@ -47,9 +47,11 @@ describe('Kafka Integration Tests', () => {
     console.log(`[Integration Test] Kafka started at ${brokers}`);
 
     // Create Kafka client
-    kafka = new Kafka({
-      clientId: 'integration-test-client',
-      brokers: [brokers],
+    kafka = new KafkaJS.Kafka({
+      kafkaJS: {
+        clientId: 'integration-test-client',
+        brokers: [brokers],
+      },
     });
 
     // Topics will be created automatically by each test with replication factor 1
@@ -71,6 +73,8 @@ describe('Kafka Integration Tests', () => {
       ],
     });
     await admin.disconnect();
+    // Allow topic metadata to propagate
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   beforeEach(async () => {
@@ -102,10 +106,13 @@ describe('Kafka Integration Tests', () => {
 
     // Create consumer with unique topic
     const testConsumer = kafka.consumer({
-      groupId: `${testGroupId}-${Date.now()}`,
+      kafkaJS: {
+        groupId: `${testGroupId}-${Date.now()}`,
+        fromBeginning: true,
+      },
     });
     await testConsumer.connect();
-    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
+    await testConsumer.subscribe({ topics: [testTopic] });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -119,7 +126,7 @@ describe('Kafka Integration Tests', () => {
       }, 15000);
 
       testConsumer.run({
-        eachMessage: async ({ message }: EachMessagePayload) => {
+        eachMessage: async ({ message }: KafkaJS.EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
             consumedMessages.push(value);
@@ -148,6 +155,7 @@ describe('Kafka Integration Tests', () => {
         brokers: [brokers],
       },
       eventType: 'hail',
+      reportDate: new Date('2024-04-26T00:00:00Z'),
     });
 
     // Wait for messages to be consumed
@@ -159,10 +167,10 @@ describe('Kafka Integration Tests', () => {
     // Verify message content - sort by Time since Kafka doesn't guarantee order with batching
     const messages = consumedMessages
       .map((msg) => JSON.parse(msg))
-      .sort((a, b) => Number.parseInt(a.Time) - Number.parseInt(b.Time));
+      .sort((a, b) => a.Time.localeCompare(b.Time));
 
     expect(messages[0]).toMatchObject({
-      Time: '1510',
+      Time: '2024-04-26T15:10:00Z',
       Size: '125',
       Location: '8 ESE Chappel',
       County: 'San Saba',
@@ -173,7 +181,7 @@ describe('Kafka Integration Tests', () => {
     });
 
     expect(messages[1]).toMatchObject({
-      Time: '1703',
+      Time: '2024-04-26T17:03:00Z',
       Size: '100',
       Location: '3 SE Burleson',
       County: 'Johnson',
@@ -182,7 +190,7 @@ describe('Kafka Integration Tests', () => {
     });
 
     expect(messages[2]).toMatchObject({
-      Time: '1704',
+      Time: '2024-04-26T17:04:00Z',
       Size: '100',
       Location: 'Anthon',
       County: 'Woodbury',
@@ -318,10 +326,13 @@ describe('Kafka Integration Tests', () => {
 
     // Create consumer with unique topic
     const testConsumer = kafka.consumer({
-      groupId: `${testGroupId}-${Date.now()}`,
+      kafkaJS: {
+        groupId: `${testGroupId}-${Date.now()}`,
+        fromBeginning: true,
+      },
     });
     await testConsumer.connect();
-    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
+    await testConsumer.subscribe({ topics: [testTopic] });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -335,7 +346,7 @@ describe('Kafka Integration Tests', () => {
       }, 20000);
 
       testConsumer.run({
-        eachMessage: async ({ message }: EachMessagePayload) => {
+        eachMessage: async ({ message }: KafkaJS.EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
             consumedMessages.push(value);
@@ -364,6 +375,7 @@ describe('Kafka Integration Tests', () => {
         brokers: [brokers],
       },
       eventType: 'torn',
+      reportDate: new Date('2024-04-26T00:00:00Z'),
     });
 
     // Wait for all messages
@@ -375,11 +387,11 @@ describe('Kafka Integration Tests', () => {
     // Verify messages are correctly formatted - sort by Time first
     const messages = consumedMessages
       .map((msg) => JSON.parse(msg))
-      .sort((a, b) => Number.parseInt(a.Time) - Number.parseInt(b.Time));
+      .sort((a, b) => a.Time.localeCompare(b.Time));
 
     // Verify first few messages have expected structure
     expect(messages[0]).toMatchObject({
-      Time: '1223',
+      Time: '2024-04-26T12:23:00Z',
       F_Scale: 'UNK',
       Location: '2 N Mcalester',
       County: 'Pittsburg',
@@ -388,7 +400,7 @@ describe('Kafka Integration Tests', () => {
     });
 
     expect(messages[1]).toMatchObject({
-      Time: '1716',
+      Time: '2024-04-26T17:16:00Z',
       F_Scale: 'UNK',
       Location: '2 ESE Ravenna',
       State: 'NE',
@@ -430,10 +442,13 @@ describe('Kafka Integration Tests', () => {
 
     // Create consumer with unique topic
     const testConsumer = kafka.consumer({
-      groupId: `${testGroupId}-${Date.now()}`,
+      kafkaJS: {
+        groupId: `${testGroupId}-${Date.now()}`,
+        fromBeginning: true,
+      },
     });
     await testConsumer.connect();
-    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
+    await testConsumer.subscribe({ topics: [testTopic] });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -447,7 +462,7 @@ describe('Kafka Integration Tests', () => {
       }, 15000);
 
       testConsumer.run({
-        eachMessage: async ({ message }: EachMessagePayload) => {
+        eachMessage: async ({ message }: KafkaJS.EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
             consumedMessages.push(value);
@@ -472,6 +487,7 @@ describe('Kafka Integration Tests', () => {
         brokers: [brokers],
       },
       eventType: testType,
+      reportDate: new Date('2024-04-26T00:00:00Z'),
     });
 
     // Wait for messages
@@ -495,7 +511,7 @@ describe('Kafka Integration Tests', () => {
     });
 
     expect(messages[0]).toMatchObject({
-      Time: '1245',
+      Time: '2024-04-26T12:45:00Z',
       Speed: 'UNK',
       Location: 'Mcalester',
       County: 'Pittsburg',
@@ -506,7 +522,7 @@ describe('Kafka Integration Tests', () => {
     });
 
     expect(messages[1]).toMatchObject({
-      Time: '1251',
+      Time: '2024-04-26T12:51:00Z',
       Speed: '65',
       Location: '4 N Dow',
       County: 'Pittsburg',
@@ -531,10 +547,13 @@ describe('Kafka Integration Tests', () => {
 
     // Create consumer
     const testConsumer = kafka.consumer({
-      groupId: `${testGroupId}-${Date.now()}`,
+      kafkaJS: {
+        groupId: `${testGroupId}-${Date.now()}`,
+        fromBeginning: true,
+      },
     });
     await testConsumer.connect();
-    await testConsumer.subscribe({ topic: testTopic, fromBeginning: true });
+    await testConsumer.subscribe({ topics: [testTopic] });
 
     // Collect consumed messages
     const consumedMessages: string[] = [];
@@ -548,7 +567,7 @@ describe('Kafka Integration Tests', () => {
       }, 20000);
 
       testConsumer.run({
-        eachMessage: async ({ message }: EachMessagePayload) => {
+        eachMessage: async ({ message }: KafkaJS.EachMessagePayload) => {
           const value = message.value?.toString();
           if (value) {
             consumedMessages.push(value);
@@ -580,6 +599,7 @@ describe('Kafka Integration Tests', () => {
       topic: testTopic,
       kafka: { clientId: 'storm-data-collector', brokers: [brokers] },
       eventType: 'torn',
+      reportDate: new Date('2024-04-26T00:00:00Z'),
     });
 
     // Publish hail reports
@@ -592,6 +612,7 @@ describe('Kafka Integration Tests', () => {
       topic: testTopic,
       kafka: { clientId: 'storm-data-collector', brokers: [brokers] },
       eventType: 'hail',
+      reportDate: new Date('2024-04-26T00:00:00Z'),
     });
 
     // Publish wind reports
@@ -604,6 +625,7 @@ describe('Kafka Integration Tests', () => {
       topic: testTopic,
       kafka: { clientId: 'storm-data-collector', brokers: [brokers] },
       eventType: 'wind',
+      reportDate: new Date('2024-04-26T00:00:00Z'),
     });
 
     // Wait for all messages

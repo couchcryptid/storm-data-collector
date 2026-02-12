@@ -96,9 +96,9 @@ The scheduler runs a collection job immediately on startup, then continues on th
 
 ### Singleton Kafka Producer
 
-A single KafkaJS producer instance is created on first use and reused for the application lifetime, with connection state tracked via event listeners.
+A single Kafka producer instance is created on first use and reused for the application lifetime, with connection state tracked via an explicit boolean flag set after `connect()` and cleared on `disconnect()`.
 
-**Why**: KafkaJS producer creation involves broker discovery and metadata fetching. Reusing a single instance avoids repeated overhead and provides a stable connection state for the readiness probe.
+**Why**: Producer creation involves broker discovery and metadata fetching. Reusing a single instance avoids repeated overhead and provides a stable connection state for the readiness probe.
 
 ### Zod Configuration Validation
 

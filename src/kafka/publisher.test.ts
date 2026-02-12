@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { publishBatch } from './publisher.js';
-import type { Producer } from 'kafkajs';
+import type { KafkaJS } from '@confluentinc/kafka-javascript';
 
 vi.mock('../logger.js', () => ({
   default: {
@@ -27,7 +27,7 @@ describe('publishBatch', () => {
 
   it('returns early for empty batch without calling producer', async () => {
     const result = await publishBatch({
-      producer: mockProducer as unknown as Producer,
+      producer: mockProducer as unknown as KafkaJS.Producer,
       topic: 'test-topic',
       batch: [],
     });
@@ -43,7 +43,7 @@ describe('publishBatch', () => {
     ];
 
     const result = await publishBatch({
-      producer: mockProducer as unknown as Producer,
+      producer: mockProducer as unknown as KafkaJS.Producer,
       topic: 'test-topic',
       batch,
     });
@@ -66,7 +66,7 @@ describe('publishBatch', () => {
       .mockResolvedValueOnce(undefined);
 
     const promise = publishBatch({
-      producer: mockProducer as unknown as Producer,
+      producer: mockProducer as unknown as KafkaJS.Producer,
       topic: 'test-topic',
       batch: [{ eventType: 'hail', Location: 'test' }],
     });
@@ -83,7 +83,7 @@ describe('publishBatch', () => {
     mockProducer.send.mockRejectedValue(new Error('broker unavailable'));
 
     const promise = publishBatch({
-      producer: mockProducer as unknown as Producer,
+      producer: mockProducer as unknown as KafkaJS.Producer,
       topic: 'test-topic',
       batch: [{ eventType: 'hail', Location: 'test' }],
     });
@@ -104,7 +104,7 @@ describe('publishBatch', () => {
       .mockResolvedValueOnce(undefined);
 
     const promise = publishBatch({
-      producer: mockProducer as unknown as Producer,
+      producer: mockProducer as unknown as KafkaJS.Producer,
       topic: 'test-topic',
       batch: [{ eventType: 'wind', Location: 'test' }],
     });

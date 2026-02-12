@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCsvFilename, buildCsvUrl } from './utils.js';
+import { formatCsvFilename, buildCsvUrl, expandHHMMToISO } from './utils.js';
 
 describe('formatCsvFilename', () => {
   it('formats filename with correct YYMMDD pattern', () => {
@@ -59,5 +59,48 @@ describe('buildCsvUrl', () => {
     const expected = `https://example.com/${yy}${mm}${dd}_rpts_hail.csv`;
 
     expect(buildCsvUrl('https://example.com/', 'hail')).toBe(expected);
+  });
+});
+
+describe('expandHHMMToISO', () => {
+  const date = new Date('2024-04-26T00:00:00Z');
+
+  it('expands four-digit HHMM to ISO 8601', () => {
+    expect(expandHHMMToISO('1510', date)).toBe('2024-04-26T15:10:00Z');
+  });
+
+  it('zero-pads three-digit HHMM', () => {
+    expect(expandHHMMToISO('930', date)).toBe('2024-04-26T09:30:00Z');
+  });
+
+  it('handles midnight', () => {
+    expect(expandHHMMToISO('0000', date)).toBe('2024-04-26T00:00:00Z');
+  });
+
+  it('returns midnight for empty string', () => {
+    expect(expandHHMMToISO('', date)).toBe('2024-04-26T00:00:00Z');
+  });
+
+  it('returns midnight for too-short string', () => {
+    expect(expandHHMMToISO('12', date)).toBe('2024-04-26T00:00:00Z');
+  });
+
+  it('returns midnight for invalid hour', () => {
+    expect(expandHHMMToISO('2510', date)).toBe('2024-04-26T00:00:00Z');
+  });
+
+  it('returns midnight for invalid minute', () => {
+    expect(expandHHMMToISO('1299', date)).toBe('2024-04-26T00:00:00Z');
+  });
+
+  it('trims whitespace', () => {
+    expect(expandHHMMToISO('  1510  ', date)).toBe('2024-04-26T15:10:00Z');
+  });
+
+  it('passes through ISO 8601 timestamps unchanged', () => {
+    const today = new Date();
+    expect(expandHHMMToISO('2024-04-26T15:10:00Z', today)).toBe(
+      '2024-04-26T15:10:00Z'
+    );
   });
 });

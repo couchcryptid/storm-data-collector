@@ -92,6 +92,7 @@ async function processCsv(type: string, date: Date): Promise<boolean> {
         topic: config.topic,
         kafka: config.kafka,
         eventType: type,
+        reportDate: date,
       });
 
       endCsvTimer();

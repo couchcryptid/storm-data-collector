@@ -29,11 +29,15 @@ COPY . .
 RUN npm run build
 
 # Production dependencies only
+# @confluentinc/kafka-javascript requires native binary download via postinstall,
+# so --ignore-scripts cannot be used. Install build tools for node-pre-gyp fallback.
 FROM base AS prod-deps
 WORKDIR /app
 
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm rebuild @confluentinc/kafka-javascript
 
 # Production image
 FROM base AS runner

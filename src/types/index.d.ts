@@ -8,4 +8,5 @@ export interface CsvToKafkaOptions {
   topic: string;
   kafka: KafkaConfig;
   eventType?: string;
+  reportDate: Date;
 }

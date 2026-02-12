@@ -36,3 +36,41 @@ export function buildCsvUrl(
 ): string {
   return `${baseUrl}${formatCsvFilename(type, date)}`;
 }
+
+/**
+ * Expand an HHMM time string to a full ISO 8601 timestamp
+ *
+ * Combines a report date with the HHMM time from the CSV row.
+ * Three-digit values are zero-padded: "930" → "0930".
+ * Invalid or empty values return the date at midnight.
+ *
+ * @param hhmm - Time string in HHMM format (e.g. "1510")
+ * @param date - Report date to combine with the time
+ * @returns ISO 8601 string (e.g. "2024-04-26T15:10:00Z")
+ */
+export function expandHHMMToISO(hhmm: string, date: Date): string {
+  const trimmed = hhmm.trim();
+  if (trimmed.includes('T')) return trimmed;
+
+  const dateStr = date.toISOString().slice(0, 10);
+  if (trimmed.length < 3) return `${dateStr}T00:00:00Z`;
+
+  const padded = trimmed.padStart(4, '0');
+  const hours = padded.slice(0, 2);
+  const mins = padded.slice(2, 4);
+
+  const h = Number(hours);
+  const m = Number(mins);
+  if (
+    Number.isNaN(h) ||
+    Number.isNaN(m) ||
+    h < 0 ||
+    h > 23 ||
+    m < 0 ||
+    m > 59
+  ) {
+    return `${dateStr}T00:00:00Z`;
+  }
+
+  return `${dateStr}T${hours}:${mins}:00Z`;
+}

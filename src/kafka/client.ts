@@ -1,38 +1,57 @@
-import { Kafka } from 'kafkajs';
+import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { KafkaConfig } from '../types/index.js';
 
-let producerInstance: ReturnType<Kafka['producer']> | null = null;
+let producerInstance: KafkaJS.Producer | null = null;
 let producerConnected = false;
+let connectPromise: Promise<KafkaJS.Producer> | null = null;
+let refCount = 0;
 
 /**
- * Get or create singleton Kafka producer
- *
- * Returns the same producer instance on multiple calls (singleton pattern).
- * Producer must be connected before use: `await producer.connect()`
- * Automatically tracks connection state via KafkaJS events.
+ * Get or create singleton Kafka producer.
  *
  * @param config - Kafka configuration with clientId and brokers
  * @returns Kafka producer instance
- * @example
- * const producer = getKafkaProducer(config);
- * await producer.connect();
- * await producer.send({ topic: 'my-topic', messages: [...] });
  */
-export function getKafkaProducer(config: KafkaConfig) {
+function getOrCreateProducer(config: KafkaConfig): KafkaJS.Producer {
   if (!producerInstance) {
-    const kafka = new Kafka({
-      clientId: config.clientId,
-      brokers: config.brokers,
+    const kafka = new KafkaJS.Kafka({
+      kafkaJS: {
+        clientId: config.clientId,
+        brokers: config.brokers,
+      },
     });
     producerInstance = kafka.producer();
-    producerInstance.on(producerInstance.events.CONNECT, () => {
-      producerConnected = true;
-    });
-    producerInstance.on(producerInstance.events.DISCONNECT, () => {
-      producerConnected = false;
-    });
   }
   return producerInstance;
+}
+
+/**
+ * Connect the singleton Kafka producer and return it for use.
+ * Safe for concurrent callers — deduplicates in-flight connect() calls
+ * and tracks a reference count so disconnect only fires when the last
+ * caller releases. This is required because @confluentinc/kafka-javascript
+ * throws "Connect has already been called elsewhere" on concurrent connects.
+ *
+ * @param config - Kafka configuration with clientId and brokers
+ * @returns Connected Kafka producer instance
+ */
+export async function connectProducer(
+  config: KafkaConfig
+): Promise<KafkaJS.Producer> {
+  refCount++;
+
+  if (producerConnected && producerInstance) return producerInstance;
+  if (connectPromise) return connectPromise;
+
+  connectPromise = (async () => {
+    const producer = getOrCreateProducer(config);
+    await producer.connect();
+    producerConnected = true;
+    connectPromise = null;
+    return producer;
+  })();
+
+  return connectPromise;
 }
 
 /**
@@ -44,10 +63,14 @@ export function isProducerConnected(): boolean {
 }
 
 /**
- * Disconnect the singleton Kafka producer if it exists.
- * Used during graceful shutdown to cleanly close Kafka connections.
+ * Release one reference to the singleton Kafka producer.
+ * Only disconnects when the last caller releases (refCount reaches 0).
+ * Used during graceful shutdown and after each CSV stream completes.
  */
 export async function disconnectProducer(): Promise<void> {
+  refCount = Math.max(0, refCount - 1);
+  if (refCount > 0) return;
+
   if (producerInstance) {
     await producerInstance.disconnect();
     producerConnected = false;

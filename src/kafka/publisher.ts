@@ -1,4 +1,4 @@
-import { Producer } from 'kafkajs';
+import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import logger from '../logger.js';
 import { metrics } from '../metrics.js';
 import { delay } from '../shared/delay.js';
@@ -10,7 +10,7 @@ const MAX_PUBLISH_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 
 export interface PublishBatchOptions {
-  producer: Producer;
+  producer: KafkaJS.Producer;
   topic: string;
   batch: Record<string, string>[];
 }

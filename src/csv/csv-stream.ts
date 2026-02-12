@@ -1,8 +1,9 @@
 import { Readable } from 'node:stream';
 import csvParser from 'csv-parser';
 import { CsvToKafkaOptions } from '../types/index.js';
-import { getKafkaProducer } from '../kafka/client.js';
+import { connectProducer, disconnectProducer } from '../kafka/client.js';
 import { publishBatch } from '../kafka/publisher.js';
+import { expandHHMMToISO } from './utils.js';
 import logger from '../logger.js';
 import { metrics } from '../metrics.js';
 
@@ -28,9 +29,9 @@ export async function csvStreamToKafka({
   topic,
   kafka,
   eventType,
+  reportDate,
 }: CsvToKafkaOptions): Promise<CsvStreamResult> {
-  const producer = getKafkaProducer(kafka);
-  await producer.connect();
+  const producer = await connectProducer(kafka);
 
   const response = await fetch(csvUrl);
   if (!response.ok)
@@ -45,7 +46,7 @@ export async function csvStreamToKafka({
   // files, pipe response.body directly through csv-parser and publish in
   // batches to avoid holding all rows in memory.
   const text = await response.text();
-  const rows = await parseCsv(text, eventType);
+  const rows = await parseCsv(text, eventType, reportDate);
 
   let publishedRows = 0;
   if (rows.length > 0) {
@@ -53,7 +54,7 @@ export async function csvStreamToKafka({
     publishedRows = result.publishedCount;
   }
 
-  await producer.disconnect();
+  await disconnectProducer();
 
   const reportType = eventType || 'unknown';
   metrics.rowsProcessedTotal.inc({ report_type: reportType }, rows.length);
@@ -69,13 +70,21 @@ export async function csvStreamToKafka({
 
 function parseCsv(
   text: string,
-  eventType?: string
+  eventType: string | undefined,
+  reportDate: Date
 ): Promise<Record<string, string>[]> {
   return new Promise((resolve, reject) => {
     const rows: Record<string, string>[] = [];
     Readable.from(text)
       .pipe(csvParser())
-      .on('data', (row) => rows.push({ ...row, eventType }))
+      .on('data', (row) => {
+        // Expand HHMM to full ISO 8601 timestamp using the report date.
+        // e.g. "1510" + 2024-04-26 → "2024-04-26T15:10:00Z"
+        const time = row.Time
+          ? expandHHMMToISO(row.Time, reportDate)
+          : row.Time;
+        rows.push({ ...row, Time: time, eventType });
+      })
       .on('end', () => resolve(rows))
       .on('error', reject);
   });

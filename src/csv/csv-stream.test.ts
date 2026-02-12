@@ -15,23 +15,20 @@ const mockSend = vi.fn();
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
 
-vi.mock('kafkajs', () => {
+vi.mock('@confluentinc/kafka-javascript', () => {
   class MockKafka {
     producer() {
       return {
         send: mockSend,
         connect: mockConnect,
         disconnect: mockDisconnect,
-        on: vi.fn(),
-        events: {
-          CONNECT: 'producer.connect',
-          DISCONNECT: 'producer.disconnect',
-        },
       };
     }
   }
   return {
-    Kafka: MockKafka,
+    KafkaJS: {
+      Kafka: MockKafka,
+    },
   };
 });
 
@@ -51,6 +48,7 @@ function buildOptions(
     topic: 'raw-weather-reports',
     kafka: { clientId: 'storm-data-collector', brokers: ['localhost:9092'] },
     eventType: 'hail',
+    reportDate: new Date('2026-02-06T00:00:00Z'),
     ...overrides,
   };
 }
@@ -79,7 +77,7 @@ describe('csvStreamToKafka', () => {
 
     const parsed = messages.map((m: any) => JSON.parse(m.value));
     expect(parsed[0]).toMatchObject({
-      Time: '1510',
+      Time: '2026-02-06T15:10:00Z',
       Size: '125',
       Location: '8 ESE Chappel',
       County: 'San Saba',
@@ -89,7 +87,7 @@ describe('csvStreamToKafka', () => {
       EventType: 'hail',
     });
     expect(parsed[1]).toMatchObject({
-      Time: '1703',
+      Time: '2026-02-06T17:03:00Z',
       Size: '100',
       Location: '3 SE Burleson',
       County: 'Johnson',
@@ -120,7 +118,7 @@ describe('csvStreamToKafka', () => {
 
     const parsed = messages.map((m: any) => JSON.parse(m.value));
     expect(parsed[0]).toMatchObject({
-      Time: '1223',
+      Time: '2026-02-06T12:23:00Z',
       F_Scale: 'UNK',
       Location: '2 N Mcalester',
       County: 'Pittsburg',
@@ -149,7 +147,7 @@ describe('csvStreamToKafka', () => {
 
     const parsed = JSON.parse(messages[0].value);
     expect(parsed).toMatchObject({
-      Time: '1245',
+      Time: '2026-02-06T12:45:00Z',
       Speed: 'UNK',
       Location: 'Mcalester',
       County: 'Pittsburg',
