@@ -1,7 +1,5 @@
 # Architecture
 
-![Architecture](architecture.excalidraw.svg)
-
 ## Data Source
 
 The collector fetches daily severe weather report CSVs from the [NOAA Storm Prediction Center](https://www.spc.noaa.gov/climo/reports/) (SPC). SPC publishes three CSV files per day, one per event type:
@@ -23,11 +21,9 @@ All three types share common columns: `Time` (HHMM 24-hour), `Location` (NWS rel
 
 **Publishing schedule:** SPC typically publishes CSVs for the current day by early afternoon CT. The cron schedule should be configured accordingly (default: every 15 minutes). 404 responses indicate the CSV isn't published yet and are silently skipped.
 
-For the full data flow from CSV to GraphQL, see the [system Data Flow documentation](https://github.com/couchcryptid/storm-data-system/wiki/Data-Flow).
+For the full pipeline architecture, see the [system wiki](https://github.com/couchcryptid/storm-data-system/wiki).
 
 ## Error Handling Flow
-
-![Error Handling Flow](error-handling-flow.excalidraw.svg)
 
 The application implements a three-tier error handling system:
 
@@ -131,7 +127,5 @@ All metrics are exposed via `GET /metrics` on the same HTTP server as the health
 
 - [System Architecture](https://github.com/couchcryptid/storm-data-system/wiki/Architecture) -- full pipeline design, deployment topology, and improvement roadmap
 - [ETL Architecture](https://github.com/couchcryptid/storm-data-etl/wiki/Architecture) -- downstream consumer of raw events published by the collector
-- [System Data Flow](https://github.com/couchcryptid/storm-data-system/wiki/Data-Flow) -- end-to-end data journey from NOAA CSV to GraphQL
 - [[Configuration]] -- environment variables and Zod validation
-- [[Deployment]] -- Docker Compose setup and production notes
-- [[Code Quality]] -- linting, static analysis, and quality gates
+- [[Development]] -- testing, coverage, linting, CI, and metrics
