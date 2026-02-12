@@ -142,3 +142,12 @@ All custom Prometheus metrics use the `storm_collector_` prefix and are exposed 
 - `src/kafka/publisher.ts` -- Kafka publish retries
 
 See the README for the full metric reference table. Default Node.js runtime metrics (`nodejs_*`, `process_*`) are also collected automatically by prom-client.
+
+## Related
+
+- [System Development](https://github.com/couchcryptid/storm-data-system/wiki/Development) -- multi-repo workflow, CI conventions, and cross-service patterns
+- [System Testing](https://github.com/couchcryptid/storm-data-system/wiki/Testing) -- E2E and UAT tests that validate the full pipeline
+- [System Observability](https://github.com/couchcryptid/storm-data-system/wiki/Observability) -- health checks, metrics, and structured logging across all services
+- [[Configuration]] -- environment variables and Zod validation
+- [[Architecture]] -- service design, error handling, and retry strategy
+- [[Code Quality]] -- linting, static analysis, and quality gates

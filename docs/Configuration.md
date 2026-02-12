@@ -44,3 +44,10 @@ HTTP errors with status 500-599 trigger automatic retries:
 Client errors (4xx) and network errors are not retried.
 
 See [[Architecture]] for error handling details.
+
+## Related
+
+- [System Configuration](https://github.com/couchcryptid/storm-data-system/wiki/Configuration) -- environment variables across all services
+- [ETL Configuration](https://github.com/couchcryptid/storm-data-etl/wiki/Configuration) -- downstream Kafka consumer and enrichment settings
+- [[Architecture]] -- error handling flow and retry strategy
+- [[Deployment]] -- environment files and Docker Compose setup

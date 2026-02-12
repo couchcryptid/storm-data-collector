@@ -2,9 +2,20 @@
 
 A TypeScript service that fetches NOAA storm report CSVs (hail, wind, tornado) on a cron schedule, converts them to JSON, and publishes them to Kafka. Part of the storm data pipeline.
 
+## Pipeline Position
+
+```
+NOAA CSVs --> [Collector] --> Kafka --> ETL --> Kafka --> API --> PostgreSQL + GraphQL
+```
+
+**Downstream**: The [ETL service](https://github.com/couchcryptid/storm-data-etl/wiki) consumes raw events from the `raw-weather-reports` topic, enriches them with severity classification, location parsing, and optional geocoding.
+
+For the full pipeline architecture, see the [system wiki](https://github.com/couchcryptid/storm-data-system/wiki).
+
 ## Pages
 
 - [[Architecture]] -- Data source, error handling, retry strategy, and capacity
 - [[Configuration]] -- Environment variables and Zod validation
 - [[Deployment]] -- Docker Compose setup and Docker image
 - [[Development]] -- Testing, coverage, linting, CI, git hooks, logging, and metrics
+- [[Code Quality]] -- Linting, static analysis, and quality gates

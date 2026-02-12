@@ -126,3 +126,12 @@ The pipeline is instrumented with Prometheus metrics at key decision points:
 - **Kafka publish level**: Counter incremented on each Kafka publish retry attempt
 
 All metrics are exposed via `GET /metrics` on the same HTTP server as the health check. See the README for the full metric reference.
+
+## Related
+
+- [System Architecture](https://github.com/couchcryptid/storm-data-system/wiki/Architecture) -- full pipeline design, deployment topology, and improvement roadmap
+- [ETL Architecture](https://github.com/couchcryptid/storm-data-etl/wiki/Architecture) -- downstream consumer of raw events published by the collector
+- [System Data Flow](https://github.com/couchcryptid/storm-data-system/wiki/Data-Flow) -- end-to-end data journey from NOAA CSV to GraphQL
+- [[Configuration]] -- environment variables and Zod validation
+- [[Deployment]] -- Docker Compose setup and production notes
+- [[Code Quality]] -- linting, static analysis, and quality gates

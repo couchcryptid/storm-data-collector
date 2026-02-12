@@ -109,3 +109,4 @@ See the [project wiki](../../wiki) for detailed documentation:
 - [Configuration](../../wiki/Configuration) -- Environment variables and Zod validation
 - [Deployment](../../wiki/Deployment) -- Docker Compose setup and Docker image
 - [Development](../../wiki/Development) -- Testing, coverage, linting, CI, git hooks, logging, and metrics
+- [Code Quality](../../wiki/Code-Quality) -- Linting, static analysis, and quality gates
