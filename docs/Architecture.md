@@ -60,8 +60,7 @@ Example retry flow:
 | 1       | Immediate | 0s         |
 | 2       | 5 minutes | 5m         |
 | 3       | 5 minutes | 10m        |
-| 4       | 5 minutes | 15m        |
-| Max+1   | Failure   | ~15m       |
+| 4       | 5 minutes | 15m (gives up on failure) |
 
 Retries only apply to 500-599 server errors. Client errors (4xx) and network errors are not retried.
 

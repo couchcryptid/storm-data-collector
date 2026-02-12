@@ -28,6 +28,26 @@ All log calls use Pino with structured context as the first argument. In develop
 
 NOAA publishes daily CSV files. The collector fetches on a matching schedule (configurable cron expression) rather than polling in real time. It also runs once immediately on startup for fast feedback during development.
 
+## What the Codebase Reveals
+
+The collector's code reveals a service deliberately scoped to do one thing well: transport data without interpreting it.
+
+### The collector is a transport, not a processor
+
+CSV values pass through as strings. No numeric parsing, no date conversion, no magnitude interpretation. The only transformation is normalizing `torn` to `tornado` in the type field. This means the collector never needs to change when downstream parsing rules evolve -- it's insulated from the ETL's business logic by design. Changes to how hail sizes or wind speeds are interpreted happen in the ETL, not here.
+
+### TypeScript strict mode does the compiler's job
+
+Zod validates configuration at startup. TypeScript strict mode catches null/undefined access at compile time. The combination means runtime errors from bad config or type mismatches are effectively eliminated. Changes to configuration (new env vars, new defaults) are validated by the type system before any code runs.
+
+### Concurrency is the default, not an optimization
+
+`Promise.allSettled()` fetches all three CSV types concurrently. If one type 404s (not published yet), the others succeed independently. This isn't an optimization for speed -- it's an isolation pattern. Changes to one report type's availability or format don't cascade to the others.
+
+### The retry strategy matches the failure mode
+
+HTTP fetches use fixed 5-minute intervals (NOAA outages are typically short). Kafka publishes use exponential backoff (broker elections resolve in seconds). Different failure modes get different retry strategies rather than a one-size-fits-all approach. Changes to retry behavior are localized to the specific failure domain.
+
 ## Static Analysis
 
 ### ESLint + TypeScript
