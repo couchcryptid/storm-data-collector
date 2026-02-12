@@ -40,6 +40,10 @@ export async function csvStreamToKafka({
     );
   if (!response.body) throw new Error(`No response body for CSV: ${csvUrl}`);
 
+  // NOAA SPC daily CSVs are small (~300 rows). Buffering the full response is
+  // simpler than streaming and sufficient for expected file sizes. For large
+  // files, pipe response.body directly through csv-parser and publish in
+  // batches to avoid holding all rows in memory.
   const text = await response.text();
   const rows = await parseCsv(text, eventType);
 

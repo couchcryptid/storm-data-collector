@@ -2,8 +2,6 @@
 
 - [[Home]]
 - [[Architecture]]
-- [[Configuration]]
-- [[Development]]
 
 ---
 

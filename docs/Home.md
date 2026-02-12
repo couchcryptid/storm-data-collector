@@ -15,5 +15,3 @@ For the full pipeline architecture, see the [system wiki](https://github.com/cou
 ## Pages
 
 - [[Architecture]] -- Data source, error handling, retry strategy, and capacity
-- [[Configuration]] -- Environment variables and Zod validation
-- [[Development]] -- Testing, coverage, linting, CI, and metrics

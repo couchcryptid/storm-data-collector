@@ -127,5 +127,3 @@ All metrics are exposed via `GET /metrics` on the same HTTP server as the health
 
 - [System Architecture](https://github.com/couchcryptid/storm-data-system/wiki/Architecture) -- full pipeline design, deployment topology, and improvement roadmap
 - [ETL Architecture](https://github.com/couchcryptid/storm-data-etl/wiki/Architecture) -- downstream consumer of raw events published by the collector
-- [[Configuration]] -- environment variables and Zod validation
-- [[Development]] -- testing, coverage, linting, CI, and metrics
