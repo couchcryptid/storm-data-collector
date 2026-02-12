@@ -10,7 +10,7 @@ describe('config', () => {
     const { config } = await import('./config.js');
 
     expect(config.kafka.clientId).toBe('csv-producer');
-    expect(config.kafka.brokers).toEqual(['localhost:9092']);
+    expect(config.kafka.brokers).toEqual(['kafka:9092']);
     expect(config.topic).toBe('raw-weather-reports');
     expect(config.cron.schedule).toBe('0 0 * * *');
     expect(config.reportsBaseUrl).toBe('https://example.com/');

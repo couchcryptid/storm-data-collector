@@ -45,7 +45,7 @@ All configuration is via environment variables (validated with Zod):
 | Variable           | Default                | Description                                    |
 | ------------------ | ---------------------- | ---------------------------------------------- |
 | `KAFKA_CLIENT_ID`  | `csv-producer`         | Kafka client identifier                        |
-| `KAFKA_BROKERS`    | `localhost:9092`       | Comma-separated list of Kafka broker addresses |
+| `KAFKA_BROKERS`    | `kafka:9092`           | Comma-separated list of Kafka broker addresses |
 | `KAFKA_TOPIC`      | `raw-weather-reports`  | Topic to publish storm reports to              |
 | `CRON_SCHEDULE`    | `0 0 * * *`            | Cron expression for collection schedule        |
 | `REPORTS_BASE_URL` | `https://example.com/` | Base URL for NOAA storm report CSVs            |

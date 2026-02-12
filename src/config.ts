@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   KAFKA_CLIENT_ID: z.string().default('csv-producer'),
-  KAFKA_BROKERS: z.string().default('localhost:9092'),
+  KAFKA_BROKERS: z.string().default('kafka:9092'),
   KAFKA_TOPIC: z.string().default('raw-weather-reports'),
   CRON_SCHEDULE: z.string().default('0 0 * * *'),
   REPORTS_BASE_URL: z.url().default('https://example.com/'),

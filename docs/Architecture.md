@@ -19,7 +19,7 @@ All three types share common columns: `Time` (HHMM 24-hour), `Location` (NWS rel
 - CSV column names are preserved as-is with capitalized keys (e.g. `Time`, `Size`, `Location`)
 - All values remain as strings -- numeric parsing happens in the downstream ETL service
 
-**Publishing schedule:** SPC typically publishes CSVs for the current day by early afternoon CT. The cron schedule should be configured accordingly (default: every 15 minutes). 404 responses indicate the CSV isn't published yet and are silently skipped.
+**Publishing schedule:** SPC typically publishes CSVs for the current day by early afternoon CT. The cron schedule should be configured accordingly (default: once daily). 404 responses indicate the CSV isn't published yet and are silently skipped.
 
 For the full pipeline architecture, see the [system wiki](https://github.com/couchcryptid/storm-data-system/wiki).
 
